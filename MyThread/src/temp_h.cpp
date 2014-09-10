@@ -12,8 +12,16 @@ void f() {
 }
 
 void g() {
+	int i = 0;
 	while (1) {
-		cout << "inside ggg" << endl;
+		i++;
+		if(i==11154) {
+			suspend(0);
+			printQueue(&readyQueue);
+			printQueue(&suspendQueue);
+			cout << "eached";
+		}
+		cout << "inside ggg" << i << endl;
 	}
 
 }
@@ -32,7 +40,7 @@ int main() {
 	cout << create(g) << endl;
 	cout << create(k) << endl;
 
-	cout << getStatus(3) -> state << endl;
+	//cout << getStatus(3) -> state << endl;
 
 	start();
 	return 0;

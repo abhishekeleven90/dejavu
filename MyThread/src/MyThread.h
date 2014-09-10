@@ -281,28 +281,26 @@ Statistics* getStatus(int threadID) {
 
 void suspend(int threadID) {
 	Thread_node* t_node = NULL;
-	if (!isValidThreadID(threadID)) {
-		return NULL;
-	}
-	if (runningThread != NULL && runningThread->stats->threadID == threadID) {
-		t_node = runningThread;
-		runningThread = NULL;
-		alarm(0); //Cancels the alarm
-		t_node -> stats -> state = SUSPENDED;
-		enque(&suspendQueue, t_node);
-		dispatch(-1);
-	}
+	if (isValidThreadID(threadID)) {
+		if (runningThread != NULL && runningThread->stats->threadID == threadID) {
+			t_node = runningThread;
+			runningThread = NULL;
+			alarm(0); //Cancels the alarm
+			t_node -> stats -> state = SUSPENDED;
+			enque(&suspendQueue, t_node);
+			dispatch(-1);
+		}
 
-	//Comes here only if not a running Thread, else should have dispatched
-	t_node = searchInQueue(threadID, &readyQueue);
+		//Comes here only if not a running Thread, else should have dispatched
+		t_node = searchInQueue(threadID, &readyQueue);
 
-	if (t_node != NULL) {
-		readyQueue.remove(t_node);
-		t_node -> stats -> state = SUSPENDED;
-		enque(&suspendQueue, t_node);
-	}
-
-	if(t_node == NULL) {
-		cout << "Inside suspend : thread not found" << endl;
+		if (t_node != NULL) {
+			readyQueue.remove(t_node);
+			t_node -> stats -> state = SUSPENDED;
+			enque(&suspendQueue, t_node);
+		}
+		if (t_node == NULL) {
+			cout << "Inside suspend : thread not found" << endl;
+		}
 	}
 }
