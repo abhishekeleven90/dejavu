@@ -1,39 +1,25 @@
-#include <list>
+#include "MyThread.h"
 #include <iostream>
+
 using namespace std;
 
-typedef struct {
+void f() {
+	while (1) {
+	}
 
-	int a;
-
-} node;
-
-void enque(list<node*> l, node* n) {
-	l.push_back(n);
 }
 
-void deque(list<node*> l) {
- l.pop_front();
- }
+void g() {
+	while (1) {
+	}
 
-int main3() {
+}
 
-	list<node*> jj;
-	node* n = new node;
-	n->a = 9;
-
-	enque(jj, n);
-
-	n->a = 5;
-	enque(jj, n);
-	list<node*>::iterator i;
-	for(i=jj.begin(); i != jj.end(); ++i) cout << (*i) << " ";
-	cout << endl;
-
-	cout << jj.size();
-	deque(jj);
-	n = jj.front();
-	cout << jj.size();
-
+int main() {
+	cout << create(f) << endl;
+	cout << create(f) << endl;
+	cout << create(g) << endl;
+	cout << create(g) << endl;
+	start();
 	return 0;
 }
