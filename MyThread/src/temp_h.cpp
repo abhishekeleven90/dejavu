@@ -16,7 +16,7 @@ void deque(list<node*> l) {
  l.pop_front();
  }
 
-int main() {
+int main3() {
 
 	list<node*> jj;
 	node* n = new node;
