@@ -5,42 +5,65 @@ using namespace std;
 
 void f() {
 	while (1) {
-		cout << "inside fff : ";
-		cout << getID() << endl;
+		cout << "ii " << endl;
+		cout << getStatus(getID()) -> averageExecutionTimeQuantum << endl;
+		cout << getStatus(getID()) -> averageWaitingTime << endl;
+		cout << getStatus(getID()) -> numberOfBursts << endl;
+		cout << getStatus(getID()) -> totalExecutionTime << endl;
+		cout << getTimers(getID()) -> totalWaitingTime << endl;
+		cout << getTimers(getID()) -> waitingCount << endl;
 	}
-
 }
 
 void g() {
-	int i = 0;
 	while (1) {
-		i++;
-		if(i==11154) {
-			suspend(0);
-			printQueue(&readyQueue);
-			printQueue(&suspendQueue);
-			cout << "eached";
-		}
-		cout << "inside ggg" << i << endl;
+		/*
+		 cout << getStatus(2) -> state << endl;
+		 cout << "ready: ";
+		 printQueue(&readyQueue);
+		 cout << "terminate: ";
+		 printQueue(&terminateQueue);
+		 */
+		cout << "mein g hun" << endl;
+		cout << getStatus(0) -> averageExecutionTimeQuantum << endl;
+		cout << getStatus(0) -> averageWaitingTime << endl;
+		cout << getStatus(0) -> numberOfBursts << endl;
+		cout << getStatus(0) -> totalExecutionTime << endl;
+		cout << getTimers(0) -> totalWaitingTime << endl;
+		cout << getTimers(0) -> waitingCount << endl;
+		cout << "g ki values" << endl;
+		cout << getStatus(getID()) -> averageExecutionTimeQuantum << endl;
+		cout << getStatus(getID()) -> averageWaitingTime << endl;
+		cout << getStatus(getID()) -> numberOfBursts << endl;
+		cout << getStatus(getID()) -> totalExecutionTime << endl;
+		cout << getTimers(getID()) -> totalWaitingTime << endl;
+		cout << getTimers(getID()) -> waitingCount << endl;
 	}
-
 }
 
-void k() {
+void* k(void* a) {
 	while (1) {
+		int* p = (int *) a;
+		cout << "I am an arg, I am alive & my value is :" << *p << endl;
 		cout << "inside kkkkkkkkkkkkk" << endl;
-
+		cout << getStatus(getID()) -> averageExecutionTimeQuantum << endl;
+		cout << getStatus(getID()) -> averageWaitingTime << endl;
+		cout << getStatus(getID()) -> numberOfBursts << endl;
+		cout << getStatus(getID()) -> totalExecutionTime << endl;
+		cout << getTimers(getID()) -> totalWaitingTime << endl;
+		cout << getTimers(getID()) -> waitingCount << endl;
 	}
-
 }
 
 int main() {
-
+	cout << "reached";
 	cout << create(f) << endl;
 	cout << create(g) << endl;
-	cout << create(k) << endl;
+	int a = 5;
+	int *p = &a;
+	cout << createWithArgs(k, p) << endl;
 
-	//cout << getStatus(3) -> state << endl;
+	cout << getStatus(2) -> state << endl;
 
 	start();
 	return 0;
