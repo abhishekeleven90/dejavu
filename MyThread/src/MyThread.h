@@ -122,11 +122,7 @@ void initializeThread(Thread_node* t_node) {
 	Timers* timers = new Timers;
 	t_node -> timers = timers;
 	timers -> totalWaitingTime = 0;
-	if (lastCreatedThreadID == 0) {
-		timers -> waitingCount = -1;
-	} else {
-		timers -> waitingCount = 0;
-	}
+	timers -> waitingCount = 0;
 
 	enque(&newQueue, t_node); //Adding to the new queue
 	enque(&masterList, t_node); //Adding to the master list
@@ -258,10 +254,8 @@ void changeState(Thread_node* node, State state) {
 		node->timers->totalWaitingTime += getTimeDiff(
 				node->timers->ready_start, node->timers->ready_end);
 		node->timers->waitingCount++;
-		if (node -> timers -> waitingCount != 0) { //check is needed if thread0 is leaving ready the first time
-			node->stats->averageWaitingTime = node->timers->totalWaitingTime
+		node->stats->averageWaitingTime = node->timers->totalWaitingTime
 					/ node->timers->waitingCount;
-		}
 	} else if (state == READY) {
 		gettimeofday(&time, NULL);
 		node->timers->ready_start = time;
