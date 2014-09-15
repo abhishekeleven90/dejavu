@@ -438,3 +438,8 @@ void *GetThreadResult(int threadID) {
 	}
 	return t_node->fn_arg_result;
 }
+
+void yield() {
+	alarm(0);
+	dispatch(14);
+}

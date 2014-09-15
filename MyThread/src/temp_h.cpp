@@ -4,59 +4,46 @@
 using namespace std;
 
 void f() {
+	long i = 0;
 	while (1) {
-		/*cout << "ffff " << endl;
-		cout << getStatus(getID()) -> averageExecutionTimeQuantum << endl;
-		cout << getStatus(getID()) -> averageWaitingTime << endl;
-		cout << getStatus(getID()) -> numberOfBursts << endl;
-		cout << getStatus(getID()) -> totalExecutionTime << endl;
-		cout << getTimers(getID()) -> totalWaitingTime << endl;
-		cout << getTimers(getID()) -> waitingCount << endl;*/
+		i++;
+		//cout << "aah ha1" << endl;
+		if (i % 1000 == 0) {
+			cout << "in f: " << i << endl;
+		}
+		if (i % 100000 == 0) {
+
+			yield();
+		}
 	}
 }
 
 void g() {
-		/*
-		 cout << getStatus(2) -> state << endl;
-		 cout << "ready: ";
-		 printQueue(&readyQueue);
-		 cout << "terminate: ";
-		 printQueue(&terminateQueue);
-		 */
-		cout << "mein g hun" << endl;
-		int *p = (int*)GetThreadResult(1);
-		cout << "result aa gya: " << *p;
-		/*cout << getStatus(0) -> averageExecutionTimeQuantum << endl;
-		cout << getStatus(0) -> averageWaitingTime << endl;
-		cout << getStatus(0) -> numberOfBursts << endl;
-		cout << getStatus(0) -> totalExecutionTime << endl;
-		cout << getTimers(0) -> totalWaitingTime << endl;
-		cout << getTimers(0) -> waitingCount << endl;
-		cout << "g ki values" << endl;
-		cout << getStatus(getID()) -> averageExecutionTimeQuantum << endl;
-		cout << getStatus(getID()) -> averageWaitingTime << endl;
-		cout << getStatus(getID()) -> numberOfBursts << endl;
-		cout << getStatus(getID()) -> totalExecutionTime << endl;
-		cout << getTimers(getID()) -> totalWaitingTime << endl;
-		cout << getTimers(getID()) -> waitingCount << endl;*/
+	long i = 0;
+
+	while (1) {
+		//cout << "aah ha2" << endl;
+		if (i % 100000 == 0) {
+			i++;
+			cout << "mein g hun" << endl;
+		}
+
+		//int *p = (int*) GetThreadResult(1);
+		//cout << "result aa gya: " << *p;
+	}
 }
 
 void* k(void* a) {
 	long i = 0;
-	while (i<100000) {
-		i++;
-		cout << "k: " << i << endl;
-/*
-		cout << "I am an arg, I am alive & my value is :" << *p << endl;
-		cout << "inside kkkkkkkkkkkkk" << endl;
-		cout << getStatus(getID()) -> averageExecutionTimeQuantum << endl;
-		cout << getStatus(getID()) -> averageWaitingTime << endl;
-		cout << getStatus(getID()) -> numberOfBursts << endl;
-		cout << getStatus(getID()) -> totalExecutionTime << endl;
-		cout << getTimers(getID()) -> totalWaitingTime << endl;
-		cout << getTimers(getID()) -> waitingCount << endl;*/
+
+	while (1) {
+		//cout << "aah ha13" << endl;
+		if (i % 100000 == 0) {
+			i++;
+			cout << "mein k hun" << endl;
+		}
+
 	}
-	return a;
 }
 
 int main() {
