@@ -73,10 +73,12 @@ void setUp(char *stack, void(*f)(void));
 Thread_node* searchInQueue(int threadId, list<Thread_node*> *l);
 void printQueue(list<Thread_node*> *l);
 bool isValidThreadID(int threadId);
-void protector(void);
+void c(void);
 int createHelper(void(*fn)(void), void *(*fn_arg)(void *), void *arg);
 void changeState(Thread_node* node, State state);
 uint64_t getTimeDiff(timeval start, timeval end);
+void protector(void);
+int switchThreadsHelper();
 
 //----------Thread Functions---------
 int create(void(*f)(void));
@@ -128,14 +130,22 @@ void initializeThread(Thread_node* t_node) {
 	enque(&masterList, t_node); //Adding to the master list
 }
 
+int switchThreadsHelper(list<Thread_node*> *targetQueue, State state) {
+	changeState(runningThread, state);
+	enque(targetQueue, runningThread);
+	cout << "printing the target queue: " << endl;
+	//printQueue(targetQueue);
+	int ret_val = sigsetjmp(jbuf[runningThread->stats->threadID], 1);
+	cout << "SWITCH HELPER: ret_val= " << ret_val << endl;
+	//runningThread = NULL;
+	return ret_val;
+}
+
 void switchThreads() {
 	//Moving current running thread to readyQueue
 	if (runningThread != NULL) {
-		changeState(runningThread, READY);
-		enque(&readyQueue, runningThread);
-		int ret_val = sigsetjmp(jbuf[runningThread->stats->threadID], 1);
-		cout << "SWITCH: ret_val= " << ret_val << endl;
-		if (ret_val == 1) {
+		if (switchThreadsHelper(&readyQueue, READY) == 1) {
+			//TO-DO write some reason here
 			return;
 		}
 	}
@@ -148,6 +158,7 @@ void switchThreads() {
 		cout << "switching now to " << runningThreadId << endl;
 		siglongjmp(jbuf[runningThreadId], 1);
 	} else {
+		printQueue(&readyQueue);
 		cout << "no thread to run - readyQueue empty" << endl;
 	}
 }
@@ -180,6 +191,8 @@ Thread_node* searchInQueue(int threadId, list<Thread_node*> *l) {
 }
 
 void printQueue(list<Thread_node*> *l) {
+	if (l == NULL)
+		return;
 	for (list<Thread_node*>::iterator it = (*l).begin(); it != (*l).end(); it++) {
 		cout << (*it)->stats->threadID << ", ";
 	}
@@ -207,10 +220,16 @@ void protector(void) {
 		arg = runningThread->arg;
 		runningThread -> fn_arg_result = (fn_arg)(arg);
 	}
-	changeState(runningThread, TERMINATED);
-	enque(&terminateQueue, runningThread);
-	runningThread = NULL;
-	alarm(0);
+	/*changeState(runningThread, TERMINATED);
+	 enque(&terminateQueue, runningThread);
+	 runningThread = NULL;
+	 alarm(0);
+	 dispatch(-1);*/
+	alarm(0); //Cancels the alarm, first thing
+	if (switchThreadsHelper(&terminateQueue, TERMINATED) == 1) {
+		//TO-DO write some reason here
+		return;
+	}
 	dispatch(-1);
 }
 
@@ -374,10 +393,16 @@ void suspend(int threadID) {
 	if (isValidThreadID(threadID)) {
 		if (runningThread != NULL && runningThread->stats->threadID == threadID) {
 			t_node = runningThread;
-			runningThread = NULL;
-			alarm(0); //Cancels the alarm
-			changeState(t_node, SUSPENDED);
-			enque(&suspendQueue, t_node);
+			/*runningThread = NULL;
+			 alarm(0); //Cancels the alarm
+			 changeState(t_node, SUSPENDED);
+			 enque(&suspendQueue, t_node);
+			 dispatch(-1);*/
+			alarm(0); //Cancels the alarm, first thing
+			if (switchThreadsHelper(&suspendQueue, SUSPENDED) == 1) {
+				//TO-DO write some reason here
+				return;
+			}
 			dispatch(-1);
 		}
 
@@ -429,11 +454,19 @@ void deleteThread(int threadID) {
 				enque(&deleteQueue, t_node);
 				break;
 			case RUNNING:
-				runningThread = NULL;
-				alarm(0); //Cancels the alarm
-				changeState(t_node, DELETED);
-				enque(&deleteQueue, t_node);
+				/*runningThread = NULL;
+				 alarm(0); //Cancels the alarm
+				 changeState(t_node, DELETED);
+				 enque(&deleteQueue, t_node);
+				 dispatch(-1);*/
+
+				alarm(0); //Cancels the alarm, first thing
+				if (switchThreadsHelper(&deleteQueue, DELETED) == 1) {
+					//TO-DO write some reason here
+					return;
+				}
 				dispatch(-1);
+
 			case NEW:
 				newQueue.remove(t_node);
 				changeState(t_node, DELETED);
@@ -473,3 +506,15 @@ void *GetThreadResult(int threadID) {
 	}
 	return t_node->fn_arg_result;
 }
+
+void yield() //to be called from the current runningThread
+{
+
+	alarm(0); //Cancels the alarm, first thing
+	if (switchThreadsHelper(&readyQueue, READY) == 1) {
+		//TO-DO write some reason here
+		return;
+	}
+	dispatch(-1);
+}
+
