@@ -15,7 +15,7 @@ using namespace std;
 //----------Constants---------
 #define JB_SP 6
 #define JB_PC 7
-#define TQ 5				//Time Quantum for round-robin scheduling
+#define TQ 1			//Time Quantum for round-robin scheduling
 #define STACK_SIZE 4096
 #define N 50				//Number of max threads allowed
 //----------Globals---------
@@ -255,7 +255,7 @@ void changeState(Thread_node* node, State state) {
 				node->timers->ready_start, node->timers->ready_end);
 		node->timers->waitingCount++;
 		node->stats->averageWaitingTime = node->timers->totalWaitingTime
-					/ node->timers->waitingCount;
+				/ node->timers->waitingCount;
 	} else if (state == READY) {
 		gettimeofday(&time, NULL);
 		node->timers->ready_start = time;
@@ -449,3 +449,27 @@ void deleteThread(int threadID) {
 	}
 }
 
+void *GetThreadResult(int threadID) {
+	if (!isValidThreadID(threadID)) {
+		return NULL;
+	}
+
+	Thread_node* t_node = searchInQueue(threadID, &masterList);
+	if (t_node == NULL) {
+		cout << "Inside GetThreadResult: thread not found" << endl;
+	} else {
+		if (t_node->stats->state == DELETED) {
+			cout << "Inside GetThreadResult: thread deleted" << endl;
+			return NULL;
+		}
+
+		sigsetjmp(jbuf[runningThread->stats->threadID], 1);
+		while (t_node->stats->state != TERMINATED) {
+			alarm(0);
+			changeState(runningThread, READY);
+			enque(&readyQueue, runningThread);
+			dispatch(-1);
+		}
+	}
+	return t_node->fn_arg_result;
+}
