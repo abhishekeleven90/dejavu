@@ -5,8 +5,8 @@ using namespace std;
 
 void f() {
 	while (1) {
-		//cout << "ffff " << endl;
-		/*cout << getStatus(getID()) -> averageExecutionTimeQuantum << endl;
+		/*cout << "ffff " << endl;
+		cout << getStatus(getID()) -> averageExecutionTimeQuantum << endl;
 		cout << getStatus(getID()) -> averageWaitingTime << endl;
 		cout << getStatus(getID()) -> numberOfBursts << endl;
 		cout << getStatus(getID()) -> totalExecutionTime << endl;
@@ -24,8 +24,8 @@ void g() {
 		 printQueue(&terminateQueue);
 		 */
 		cout << "mein g hun" << endl;
-		int* p = (int *)GetThreadResult(2);
-		cout << "printing inside g: " << *p;
+		int *p = (int*)GetThreadResult(1);
+		cout << "result aa gya: " << *p;
 		/*cout << getStatus(0) -> averageExecutionTimeQuantum << endl;
 		cout << getStatus(0) -> averageWaitingTime << endl;
 		cout << getStatus(0) -> numberOfBursts << endl;
@@ -42,18 +42,14 @@ void g() {
 }
 
 void* k(void* a) {
-	unsigned long i = 0;
-	while (i<600000) {
+	long i = 0;
+	while (i<100000) {
 		i++;
-		//if(i%1000000 == 0){
-			//cout << "k: ";
-			//cout << getStatus(getID()) -> numberOfBursts << endl;
-		//}
-
-		int* p = (int *) a;
-		//cout << "I am an arg, I am alive & my value is :" << *p << endl;
-		//cout << "inside kkkkkkkkkkkkk" << endl;
-		/*cout << getStatus(getID()) -> averageExecutionTimeQuantum << endl;
+		cout << "k: " << i << endl;
+/*
+		cout << "I am an arg, I am alive & my value is :" << *p << endl;
+		cout << "inside kkkkkkkkkkkkk" << endl;
+		cout << getStatus(getID()) -> averageExecutionTimeQuantum << endl;
 		cout << getStatus(getID()) -> averageWaitingTime << endl;
 		cout << getStatus(getID()) -> numberOfBursts << endl;
 		cout << getStatus(getID()) -> totalExecutionTime << endl;
@@ -65,13 +61,11 @@ void* k(void* a) {
 
 int main() {
 	cout << "reached";
-	int a = 5;
-		int *p = &a;
 	cout << create(f) << endl;
 	cout << create(g) << endl;
+	int a = 5;
+	int *p = &a;
 	cout << createWithArgs(k, p) << endl;
-
-
 
 	//cout << getStatus(2) -> state << endl;
 
