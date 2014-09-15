@@ -4,46 +4,25 @@
 using namespace std;
 
 void f() {
-	long i = 0;
 	while (1) {
-		i++;
-		//cout << "aah ha1" << endl;
-		if (i % 1000 == 0) {
-			cout << "in f: " << i << endl;
-		}
-		if (i % 100000 == 0) {
-
-			yield();
-		}
+		//cout << "f" << endl;
 	}
 }
 
 void g() {
-	long i = 0;
-
-	while (1) {
-		//cout << "aah ha2" << endl;
-		if (i % 100000 == 0) {
-			i++;
-			cout << "mein g hun" << endl;
-		}
-
-		//int *p = (int*) GetThreadResult(1);
-		//cout << "result aa gya: " << *p;
-	}
+	cout << "mein g hun" << endl;
+	JOIN(0);
+	//cout << "result aa gya: " << *p;
+	cout << "here" << endl;
 }
 
 void* k(void* a) {
-	long i = 0;
-
-	while (1) {
-		//cout << "aah ha13" << endl;
-		if (i % 100000 == 0) {
-			i++;
-			cout << "mein k hun" << endl;
-		}
-
+	unsigned long i = 0;
+	while (i < 100000) {
+		i++;
+		cout << "k: " << i << endl;
 	}
+	return a;
 }
 
 int main() {

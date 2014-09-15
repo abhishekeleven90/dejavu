@@ -129,6 +129,7 @@ void switchThreads() {
 		changeState(runningThread, RUNNING);
 		int runningThreadId = runningThread->stats->threadID;
 		cout << "switching now to " << runningThreadId << endl;
+		printQueue(&readyQueue);
 		siglongjmp(jbuf[runningThreadId], 1);
 	} else {
 		cout << "no thread to run - readyQueue empty" << endl;
@@ -424,12 +425,12 @@ void *GetThreadResult(int threadID) {
 		return NULL;
 	}
 
+	sigsetjmp(jbuf[runningThread->stats->threadID], 1);
 	if (t_node->stats->state == DELETED) {
 		cout << "Inside GetThreadResult: thread deleted" << endl;
 		return NULL;
 	}
 
-	sigsetjmp(jbuf[runningThread->stats->threadID], 1);
 	while (t_node->stats->state != TERMINATED) {
 		alarm(0);
 		changeState(runningThread, READY);
@@ -437,6 +438,32 @@ void *GetThreadResult(int threadID) {
 		dispatch(-1);
 	}
 	return t_node->fn_arg_result;
+}
+
+void JOIN(int threadID) {
+	if (!isValidThreadID(threadID)) {
+		return;
+	}
+
+	Thread_node* t_node = searchInQueue(threadID, &masterList);
+	if (t_node == NULL) {
+		cout << "Inside GetThreadResult: thread not found" << endl;
+		return;
+	}
+
+	sigsetjmp(jbuf[runningThread->stats->threadID], 1);
+	if (t_node->stats->state == DELETED) {
+		cout << "Inside GetThreadResult: thread deleted" << endl;
+		return;
+	}
+
+	if (t_node->stats->state != TERMINATED) {
+		alarm(0);
+		cout << "kar dita kaam" << endl;
+		changeState(runningThread, READY);
+		enque(&readyQueue, runningThread);
+		dispatch(-1);
+	}
 }
 
 void yield() {
