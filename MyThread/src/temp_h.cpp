@@ -1,28 +1,30 @@
 #include "MyThread.h"
 #include <iostream>
+#define SECOND 1000000
 
 using namespace std;
 
 void f() {
 	while (1) {
-		//cout << "f" << endl;
+		cout << "f" << endl;
+		usleep(SECOND);
 	}
 }
 
 void g() {
-	//cout << "mein g hun" << endl;
-	//JOIN(0);
-	//cout << "result aa gya: " << *p;
-	//cout << "here" << endl;
+	while (1) {
+		cout << "mein g hun" << endl;
+		JOIN(2);
+		cout << "reached here in g" << endl;
+		usleep(SECOND);
+	}
 }
 
 void* k(void* a) {
-	unsigned long i = 0;
-	while (1) {
-		//i++;
-		//cout << "k: " << i << endl;
-	}
-	return a;
+	//while (1) {
+		cout << "K" << endl;
+		usleep(SECOND);
+	//}
 }
 
 int main() {

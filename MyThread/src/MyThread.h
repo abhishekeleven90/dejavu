@@ -69,6 +69,7 @@ void protector(void);
 int createHelper(void(*fn)(void), void *(*fn_arg)(void *), void *arg);
 void changeState(Thread_node* node, State state);
 uint64_t getTimeDiff(timeval start, timeval end);
+void moveThread(Thread_node *t_node, State fromState, State toState);
 
 //----------Thread Functions---------
 int create(void(*f)(void));
@@ -140,8 +141,10 @@ void switchThreads() {
 		}
 
 		int ret_val = sigsetjmp(jbuf[runningThread->stats->threadID], 1);
-		cout << "SWITCH: ret_val= " << ret_val << endl;
+		//cout << "SWITCH: ret_val= " << ret_val << endl;
 		if (ret_val == 1) {
+			cout << "Returning from switch : may go inside the function"
+					<< endl;
 			return;
 		}
 	}
@@ -152,6 +155,7 @@ void switchThreads() {
 		changeState(runningThread, RUNNING);
 		int runningThreadId = runningThread->stats->threadID;
 		cout << "switching now to " << runningThreadId << endl;
+		cout << "Ready Queue: ";
 		printQueue(&readyQueue);
 		siglongjmp(jbuf[runningThreadId], 1);
 	} else {
@@ -198,10 +202,12 @@ bool isValidThreadID(int threadId) {
 	return true;
 }
 void protector(void) {
-	cout << "in protector: " << runningThread->stats->threadID << endl;
 	void (*fn)(void);
 	void *(*fn_arg)(void*);
 	void *arg;
+
+	cout << "Going inside the function from protector" << endl;
+
 	if (runningThread->fn != NULL) {
 		//In case of "create(void(*f)(void))"
 		fn = runningThread->fn;
@@ -211,8 +217,11 @@ void protector(void) {
 		arg = runningThread->arg;
 		runningThread -> fn_arg_result = (fn_arg)(arg);
 	}
-	changeState(runningThread, TERMINATED);
-	yield();
+
+	cout << "Inside protector: terminated with id: "
+			<< runningThread->stats->threadID << endl;
+
+	moveThread(runningThread, RUNNING, TERMINATED);
 }
 
 int createHelper(void(*fn)(void), void *(*fn_arg)(void *) = NULL,
@@ -239,6 +248,7 @@ int createHelper(void(*fn)(void), void *(*fn_arg)(void *) = NULL,
 	setUp(stack, fn);
 	return lastCreatedThreadID;
 }
+
 void changeState(Thread_node* node, State state) {
 	struct timeval time;
 	if (node -> stats -> state == READY) {
@@ -267,25 +277,63 @@ void changeState(Thread_node* node, State state) {
 	}
 	node->stats->state = state;
 }
+
 uint64_t getTimeDiff(timeval start, timeval end) {
 	uint64_t endmillis = (end.tv_sec * (uint64_t) 1000) + (end.tv_usec / 1000);
 	uint64_t startmillis = (start.tv_sec * (uint64_t) 1000) + (start.tv_usec
 			/ 1000);
 	return endmillis - startmillis;
 }
+
 Timers* getTimers(int threadID) {
 	if (!isValidThreadID(threadID)) {
 		return NULL;
 	}
-	Thread_node* t_node = NULL;
-	t_node = searchInQueue(threadID, &masterList);
-	if (t_node != NULL) {
-		return t_node->timers;
-	} else {
+
+	Thread_node* t_node = searchInQueue(threadID, &masterList);
+	if (t_node == NULL) {
 		cout << "Inside getTimers : thread not found" << endl;
 		return NULL;
 	}
+
+	return t_node->timers;
 }
+
+void moveThread(Thread_node *t_node, State fromState, State toState) {
+	switch (toState) {
+	case RUNNING:
+		cout << "This method does not support making toState as RUNNING";
+		return;
+	case READY:
+		enque(&readyQueue, t_node);
+		changeState(t_node, READY);
+		break;
+	case SUSPENDED:
+		changeState(t_node, SUSPENDED);
+		enque(&suspendQueue, t_node);
+		break;
+	case DELETED:
+		changeState(t_node, DELETED);
+		enque(&deleteQueue, t_node);
+		break;
+	}
+
+	switch (fromState) {
+	case RUNNING:
+		yield(); //Need to yield the thread if the fromStatus is RUNNING
+		break;
+	case READY:
+		readyQueue.remove(t_node);
+		break;
+	case SUSPENDED:
+		suspendQueue.remove(t_node);
+		break;
+	case NEW:
+		newQueue.remove(t_node);
+		break;
+	}
+}
+
 //----------Thread Functions---------
 int create(void(*f)(void)) {
 	return createHelper(f);
@@ -301,110 +349,114 @@ void dispatch(int sig) {
 
 /***Moves all the created threads to ready queue & runs the first one***/
 void start() {
+	if (newQueue.empty()) {
+		cout << "Inside start: newQueue empty, please create some threads";
+		return;
+	}
+
 	//Moving all new threads to readyQueue
 	while (!newQueue.empty()) {
-		Thread_node* t_node = deque(&newQueue);
-		changeState(t_node, READY);
-		enque(&readyQueue, t_node);
+		Thread_node* t_node = newQueue.front();
+		moveThread(t_node, NEW, READY);
 	}
 	dispatch(14);
 }
 void run(int threadID) {
-	Thread_node* t_node = NULL;
-	if (isValidThreadID(threadID)) {
-		t_node = searchInQueue(threadID, &newQueue);
-		if (t_node == NULL) {
-			cout << "Inside run : Thread not found" << endl;
-		} else {
-			newQueue.remove(t_node);
-			enque(&readyQueue, t_node);
-			changeState(t_node, READY);
-		}
+	if (!isValidThreadID(threadID)) {
+		return;
 	}
+
+	Thread_node* t_node = searchInQueue(threadID, &newQueue);
+	if (t_node == NULL) {
+		cout << "Inside run : Thread not found in the created(new) state"
+				<< endl;
+		return;
+	}
+
+	moveThread(t_node, NEW, READY);
 }
+
 int getID() {
 	if (runningThread != NULL) {
 		return runningThread->stats->threadID;
-	} else {
-		return -1;
 	}
+
+	return -1;
 }
+
 Statistics* getStatus(int threadID) {
 	if (!isValidThreadID(threadID)) {
 		return NULL;
 	}
-	Thread_node* t_node = NULL;
-	t_node = searchInQueue(threadID, &masterList);
-	if (t_node != NULL) {
-		return t_node->stats;
-	} else {
+
+	Thread_node* t_node = searchInQueue(threadID, &masterList);
+	if (t_node == NULL) {
 		cout << "Inside getStatus : thread not found" << endl;
 		return NULL;
 	}
+
+	return t_node->stats;
+
 }
 void suspend(int threadID) {
-	Thread_node* t_node = NULL;
-	if (isValidThreadID(threadID)) {
-		if (runningThread != NULL && runningThread->stats->threadID == threadID) {
-			changeState(runningThread, SUSPENDED);
-			yield();
-		}
-		// Comes here only if not a running Thread, else should have dispatched
-		t_node = searchInQueue(threadID, &readyQueue);
-		if (t_node != NULL) {
-			readyQueue.remove(t_node);
-			changeState(t_node, SUSPENDED);
-			enque(&suspendQueue, t_node);
-		}
-		if (t_node == NULL) {
-			cout << "Inside suspend : thread not found" << endl;
-		}
+	if (!isValidThreadID(threadID)) {
+		return;
 	}
+
+	if (runningThread != NULL && runningThread->stats->threadID == threadID) {
+		moveThread(runningThread, RUNNING, SUSPENDED);
+	}
+
+	// Comes here only if not a running Thread, else should have dispatched
+	Thread_node* t_node = searchInQueue(threadID, &readyQueue);
+	if (t_node == NULL) {
+		cout << "Inside suspend : thread not found" << endl;
+	}
+
+	moveThread(t_node, READY, SUSPENDED);
 }
+
 void resume(int threadID) {
-	Thread_node* t_node = NULL;
-	if (isValidThreadID(threadID)) {
-		t_node = searchInQueue(threadID, &suspendQueue);
-		if (t_node == NULL) {
-			cout << "Inside resume : Thread not found" << endl;
-		} else {
-			suspendQueue.remove(t_node);
-			enque(&readyQueue, t_node);
-			changeState(t_node, READY);
-		}
+	if (!isValidThreadID(threadID)) {
+		return;
 	}
+
+	Thread_node* t_node = searchInQueue(threadID, &suspendQueue);
+	if (t_node == NULL) {
+		cout << "Inside resume : Thread not found" << endl;
+		return;
+	}
+
+	moveThread(t_node, SUSPENDED, READY);
 }
+
 void deleteThread(int threadID) {
-	Thread_node* t_node = NULL;
-	if (isValidThreadID(threadID)) {
-		t_node = searchInQueue(threadID, &masterList);
-		if (t_node == NULL) {
-			cout << "Inside deleteThread: thread not found" << endl;
-		} else {
-			switch (t_node->stats->state) {
-			case DELETED:
-				cout << "Inside deleteThread: thread already deleted" << endl;
-				break;
-			case READY:
-				readyQueue.remove(t_node);
-				changeState(t_node, DELETED);
-				enque(&deleteQueue, t_node);
-				break;
-			case RUNNING:
-				changeState(t_node, DELETED);
-				yield();
-			case NEW:
-				newQueue.remove(t_node);
-				changeState(t_node, DELETED);
-				enque(&deleteQueue, t_node);
-				break;
-			case SUSPENDED:
-				suspendQueue.remove(t_node);
-				changeState(t_node, DELETED);
-				enque(&deleteQueue, t_node);
-				break;
-			}
-		}
+	if (!isValidThreadID(threadID)) {
+		return;
+	}
+
+	Thread_node* t_node = searchInQueue(threadID, &masterList);
+	if (t_node == NULL) {
+		cout << "Inside deleteThread: thread not found" << endl;
+		return;
+	}
+
+	switch (t_node->stats->state) {
+	case DELETED:
+		cout << "Inside deleteThread: thread already deleted" << endl;
+		break;
+	case READY:
+		moveThread(t_node, READY, DELETED);
+		break;
+	case RUNNING:
+		moveThread(t_node, RUNNING, DELETED);
+		break;
+	case NEW:
+		moveThread(t_node, NEW, DELETED);
+		break;
+	case SUSPENDED:
+		moveThread(t_node, SUSPENDED, DELETED);
+		break;
 	}
 }
 
@@ -431,13 +483,14 @@ void *GetThreadResult(int threadID) {
 		return NULL;
 	}
 
-	if (t_node->stats->state == DELETED) {
-		cout << "Inside GetThreadResult: thread deleted" << endl;
-		return NULL;
-	}
-
 	while (t_node->stats->state != TERMINATED) {
-		yield();
+		//Using Delete check here to cover the scenario - if thread deleted before terminating
+		if (t_node->stats->state == DELETED) {
+			cout << "Inside GetThreadResult: thread deleted" << endl;
+			return NULL;
+		}
+
+		moveThread(runningThread, RUNNING, READY); //Moving currentThread to Ready queue until t_node is terminated
 	}
 	return t_node->fn_arg_result;
 }
@@ -459,7 +512,13 @@ void JOIN(int threadID) {
 	}
 
 	while (t_node->stats->state != TERMINATED) {
-		yield();
+		//Using Delete check here to cover the scenario - if thread deleted before terminating
+		if (t_node->stats->state == DELETED) {
+			cout << "Inside GetThreadResult: thread deleted" << endl;
+			return NULL;
+		}
+
+		moveThread(runningThread, RUNNING, READY); //Moving currentThread to Ready queue until t_node is terminated
 	}
 }
 
