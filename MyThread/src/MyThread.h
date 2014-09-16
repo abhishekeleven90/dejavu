@@ -13,7 +13,7 @@ using namespace std;
 //----------Constants---------
 #define JB_SP 6
 #define JB_PC 7
-#define TQ 5 //Time Quantum for round-robin scheduling
+#define TQ 2 //Time Quantum for round-robin scheduling
 #define STACK_SIZE 4096
 #define N 50 //Number of max threads allowed
 //----------Globals---------
@@ -53,6 +53,7 @@ int lastCreatedThreadID = -1; //global variable to maintain the threadIds
 //char master_stack[N][STACK_SIZE];
 typedef unsigned long address_t; //64bit address
 Thread_node* runningThread;
+
 //***************************FUNCTION DECLARATIONS*********************************
 //----------Helper Functions---------
 void enque(list<Thread_node*> *l, Thread_node* node);
@@ -68,6 +69,7 @@ void protector(void);
 int createHelper(void(*fn)(void), void *(*fn_arg)(void *), void *arg);
 void changeState(Thread_node* node, State state);
 uint64_t getTimeDiff(timeval start, timeval end);
+
 //----------Thread Functions---------
 int create(void(*f)(void));
 int getID();
@@ -84,6 +86,7 @@ int createWithArgs(void *(*f)(void *), void *arg);
 void clean();
 void JOIN(int threadID);
 void *GetThreadResult(int threadID);
+
 //*******************************FUNCTION DEFINITIONS************************
 //Helper Functions
 void enque(list<Thread_node*> *l, Thread_node* node) {
@@ -113,16 +116,36 @@ void initializeThread(Thread_node* t_node) {
 	enque(&masterList, t_node); //Adding to the master list
 }
 void switchThreads() {
-	//Moving current running thread to readyQueue
 	if (runningThread != NULL) {
-		changeState(runningThread, READY);
-		enque(&readyQueue, runningThread);
+		switch (runningThread->stats->state) {
+		case READY:
+			enque(&readyQueue, runningThread);
+			break;
+		case SUSPENDED:
+			enque(&suspendQueue, runningThread);
+			break;
+		case DELETED:
+			enque(&deleteQueue, runningThread);
+			break;
+		case TERMINATED:
+			enque(&terminateQueue, runningThread);
+			break;
+		case RUNNING:
+			changeState(runningThread, READY);
+			enque(&readyQueue, runningThread);
+			break;
+		case NEW:
+			cout << "Should not reach over here";
+			break;
+		}
+
 		int ret_val = sigsetjmp(jbuf[runningThread->stats->threadID], 1);
 		cout << "SWITCH: ret_val= " << ret_val << endl;
 		if (ret_val == 1) {
 			return;
 		}
 	}
+
 	//Moving readyHead to running state
 	if (!readyQueue.empty()) {
 		runningThread = deque(&readyQueue);
@@ -135,6 +158,7 @@ void switchThreads() {
 		cout << "no thread to run - readyQueue empty" << endl;
 	}
 }
+
 unsigned long int translate_address(unsigned long int addr) {
 	unsigned long int retAddr;
 	asm volatile("movq %%fs:0x30,%0\n" : "=r" (retAddr));
@@ -147,6 +171,7 @@ void setUp(char *stack, void(*f)(void)) {
 	sp = (address_t) stack + STACK_SIZE - sizeof(address_t);
 	pc = (address_t) (&protector);
 	sigsetjmp(jbuf[lastCreatedThreadID], 1);
+	cout << "inside setup";
 	(jbuf[lastCreatedThreadID]->__jmpbuf)[JB_SP] = translate_address(sp);
 	(jbuf[lastCreatedThreadID]->__jmpbuf)[JB_PC] = translate_address(pc);
 	sigemptyset(&jbuf[lastCreatedThreadID]->__saved_mask); //empty saved signal mask
@@ -173,6 +198,7 @@ bool isValidThreadID(int threadId) {
 	return true;
 }
 void protector(void) {
+	cout << "in protector: " << runningThread->stats->threadID << endl;
 	void (*fn)(void);
 	void *(*fn_arg)(void*);
 	void *arg;
@@ -186,11 +212,9 @@ void protector(void) {
 		runningThread -> fn_arg_result = (fn_arg)(arg);
 	}
 	changeState(runningThread, TERMINATED);
-	enque(&terminateQueue, runningThread);
-	runningThread = NULL;
-	alarm(0);
-	dispatch(-1);
+	yield();
 }
+
 int createHelper(void(*fn)(void), void *(*fn_arg)(void *) = NULL,
 		void *arg = NULL) {
 	Thread_node* t_node = new Thread_node;
@@ -272,17 +296,9 @@ int createWithArgs(void *(*f)(void *), void *arg) {
 void dispatch(int sig) {
 	signal(SIGALRM, dispatch);
 	alarm(TQ);
-	if (sig == -1) {
-		if (!readyQueue.empty()) {
-			runningThread = deque(&readyQueue);
-			changeState(runningThread, RUNNING);
-			siglongjmp(jbuf[runningThread->stats->threadID], 1);
-		} else {
-			cout << "No threads in readyQueue" << endl;
-		}
-	}
 	switchThreads();
 }
+
 /***Moves all the created threads to ready queue & runs the first one***/
 void start() {
 	//Moving all new threads to readyQueue
@@ -291,7 +307,7 @@ void start() {
 		changeState(t_node, READY);
 		enque(&readyQueue, t_node);
 	}
-	dispatch(-1);
+	dispatch(14);
 }
 void run(int threadID) {
 	Thread_node* t_node = NULL;
@@ -330,12 +346,8 @@ void suspend(int threadID) {
 	Thread_node* t_node = NULL;
 	if (isValidThreadID(threadID)) {
 		if (runningThread != NULL && runningThread->stats->threadID == threadID) {
-			t_node = runningThread;
-			runningThread = NULL;
-			alarm(0); //Cancels the alarm
-			changeState(t_node, SUSPENDED);
-			enque(&suspendQueue, t_node);
-			dispatch(-1);
+			changeState(runningThread, SUSPENDED);
+			yield();
 		}
 		// Comes here only if not a running Thread, else should have dispatched
 		t_node = searchInQueue(threadID, &readyQueue);
@@ -373,20 +385,14 @@ void deleteThread(int threadID) {
 			case DELETED:
 				cout << "Inside deleteThread: thread already deleted" << endl;
 				break;
-			case SLEEPING:
-				cout << "PASS...TO-DO" << endl;
-				break;
 			case READY:
 				readyQueue.remove(t_node);
 				changeState(t_node, DELETED);
 				enque(&deleteQueue, t_node);
 				break;
 			case RUNNING:
-				runningThread = NULL;
-				alarm(0); //Cancels the alarm
 				changeState(t_node, DELETED);
-				enque(&deleteQueue, t_node);
-				dispatch(-1);
+				yield();
 			case NEW:
 				newQueue.remove(t_node);
 				changeState(t_node, DELETED);
@@ -425,17 +431,13 @@ void *GetThreadResult(int threadID) {
 		return NULL;
 	}
 
-	sigsetjmp(jbuf[runningThread->stats->threadID], 1);
 	if (t_node->stats->state == DELETED) {
 		cout << "Inside GetThreadResult: thread deleted" << endl;
 		return NULL;
 	}
 
 	while (t_node->stats->state != TERMINATED) {
-		alarm(0);
-		changeState(runningThread, READY);
-		enque(&readyQueue, runningThread);
-		dispatch(-1);
+		yield();
 	}
 	return t_node->fn_arg_result;
 }
@@ -451,18 +453,13 @@ void JOIN(int threadID) {
 		return;
 	}
 
-	sigsetjmp(jbuf[runningThread->stats->threadID], 1);
 	if (t_node->stats->state == DELETED) {
 		cout << "Inside GetThreadResult: thread deleted" << endl;
 		return;
 	}
 
-	if (t_node->stats->state != TERMINATED) {
-		alarm(0);
-		cout << "kar dita kaam" << endl;
-		changeState(runningThread, READY);
-		enque(&readyQueue, runningThread);
-		dispatch(-1);
+	while (t_node->stats->state != TERMINATED) {
+		yield();
 	}
 }
 

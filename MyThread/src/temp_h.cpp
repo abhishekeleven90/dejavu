@@ -10,23 +10,23 @@ void f() {
 }
 
 void g() {
-	cout << "mein g hun" << endl;
-	JOIN(0);
+	//cout << "mein g hun" << endl;
+	//JOIN(0);
 	//cout << "result aa gya: " << *p;
-	cout << "here" << endl;
+	//cout << "here" << endl;
 }
 
 void* k(void* a) {
 	unsigned long i = 0;
-	while (i < 100000) {
-		i++;
-		cout << "k: " << i << endl;
+	while (1) {
+		//i++;
+		//cout << "k: " << i << endl;
 	}
 	return a;
 }
 
 int main() {
-	cout << "reached";
+	cout << "reached" << endl;
 	cout << create(f) << endl;
 	cout << create(g) << endl;
 	int a = 5;
@@ -36,5 +36,6 @@ int main() {
 	//cout << getStatus(2) -> state << endl;
 
 	start();
+	cout << "hereeeeee in main";
 	return 0;
 }
