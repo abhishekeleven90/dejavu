@@ -118,26 +118,10 @@ void initializeThread(Thread_node* t_node) {
 }
 void switchThreads() {
 	if (runningThread != NULL) {
-		switch (runningThread->stats->state) {
-		case READY:
-			enque(&readyQueue, runningThread);
-			break;
-		case SUSPENDED:
-			enque(&suspendQueue, runningThread);
-			break;
-		case DELETED:
-			enque(&deleteQueue, runningThread);
-			break;
-		case TERMINATED:
-			enque(&terminateQueue, runningThread);
-			break;
-		case RUNNING:
+		if (runningThread->stats->state == RUNNING) {
+			//shall come here only if TQ expires
 			changeState(runningThread, READY);
 			enque(&readyQueue, runningThread);
-			break;
-		case NEW:
-			cout << "Should not reach over here";
-			break;
 		}
 
 		int ret_val = sigsetjmp(jbuf[runningThread->stats->threadID], 1);
@@ -316,6 +300,10 @@ void moveThread(Thread_node *t_node, State fromState, State toState) {
 		changeState(t_node, DELETED);
 		enque(&deleteQueue, t_node);
 		break;
+	case TERMINATED:
+			changeState(t_node, TERMINATED);
+			enque(&terminateQueue, t_node);
+			break;
 	}
 
 	switch (fromState) {
@@ -506,16 +494,11 @@ void JOIN(int threadID) {
 		return;
 	}
 
-	if (t_node->stats->state == DELETED) {
-		cout << "Inside GetThreadResult: thread deleted" << endl;
-		return;
-	}
-
 	while (t_node->stats->state != TERMINATED) {
 		//Using Delete check here to cover the scenario - if thread deleted before terminating
 		if (t_node->stats->state == DELETED) {
 			cout << "Inside GetThreadResult: thread deleted" << endl;
-			return NULL;
+			return;
 		}
 
 		moveThread(runningThread, RUNNING, READY); //Moving currentThread to Ready queue until t_node is terminated
