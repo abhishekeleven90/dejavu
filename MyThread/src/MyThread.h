@@ -9,6 +9,7 @@
 #include <iostream>
 #include <malloc.h>
 #include <unistd.h>
+#include <stdlib.h>
 using namespace std;
 
 #ifdef __x86_64__
@@ -175,8 +176,8 @@ void switchThreads() {
 		int ret_val = sigsetjmp(jbuf[runningThread->stats->threadID], 1);
 		//cout << "SWITCH: ret_val= " << ret_val << endl;
 		if (ret_val == 1) {
-			cout << "Returning from switch : may go inside the function"
-					<< endl;
+			//cout << "Returning from switch : may go inside the function"
+				//	<< endl;
 			return;
 		}
 	}
@@ -187,9 +188,11 @@ void switchThreads() {
 		//checkIfSleepDone(runningThread);
 		changeState(runningThread, RUNNING);
 		int runningThreadId = runningThread->stats->threadID;
-		cout << "---switching now to " << runningThreadId << endl;
+		cout << "/----------------" << endl;
+		cout << "switching now to " << runningThreadId << endl;
 		cout << "Ready Queue: ";
 		printQueue(&readyQueue);
+		cout << "----------------/" << endl;
 		siglongjmp(jbuf[runningThreadId], 1);
 	} else {
 		cout << "no thread to run - readyQueue empty" << endl;
@@ -210,7 +213,9 @@ void setUp(char *stack, void(*f)(void)) {
 	sp = (address_t) stack + STACK_SIZE - sizeof(address_t);
 	pc = (address_t) (&protector);
 	sigsetjmp(jbuf[lastCreatedThreadID], 1);
-	cout << "inside setup" << lastCreatedThreadID << endl;
+	cout << "/----------------" << endl;
+	cout << "Inside setup" << lastCreatedThreadID << endl;
+	cout << "----------------/" << endl;
 	(jbuf[lastCreatedThreadID]->__jmpbuf)[JB_SP] = translate_address(sp);
 	(jbuf[lastCreatedThreadID]->__jmpbuf)[JB_PC] = translate_address(pc);
 	sigemptyset(&jbuf[lastCreatedThreadID]->__saved_mask); //empty saved signal mask
@@ -245,7 +250,7 @@ void protector(void) {
 	void *(*fn_arg)(void*);
 	void *arg;
 
-	cout << "Going inside the function from protector" << endl;
+	//cout << "Going inside the function from protector" << endl;
 
 	if (runningThread->fn != NULL) {
 		//In case of "create(void(*f)(void))"
@@ -262,6 +267,7 @@ void protector(void) {
 
 int createHelper(void(*fn)(void), void *(*fn_arg)(void *) = NULL,
 		void *arg = NULL) {
+
 	Thread_node* t_node = new Thread_node;
 	if (t_node == NULL) {
 		cout << "Sorry, out of memory, no more thread can be created" << endl;
@@ -373,7 +379,9 @@ void moveThread(Thread_node *t_node, State fromState, State toState) {
 		changeState(t_node, SLEEPING);
 		break;
 	case SUSPENDED:
+		cout << "/----------------" << endl;
 		cout << "Suspended thread: " << threadId << endl;
+		cout << "----------------/" << endl;
 		changeState(t_node, SUSPENDED);
 		enque(&suspendQueue, t_node);
 		break;
@@ -382,13 +390,17 @@ void moveThread(Thread_node *t_node, State fromState, State toState) {
 		enque(&waitingQueue, t_node);
 		break;
 	case DELETED:
+		cout << "/----------------" << endl;
 		cout << "Deleted thread: " << threadId << endl;
+		cout << "----------------/" << endl;
 		changeState(t_node, DELETED);
 		enque(&deleteQueue, t_node);
 		resumeWaitingThreads(t_node);
 		break;
 	case TERMINATED:
+		cout << "/----------------" << endl;
 		cout << "Terminated thread: " << threadId << endl;
+		cout << "----------------/" << endl;
 		changeState(t_node, TERMINATED);
 		enque(&terminateQueue, t_node);
 		resumeWaitingThreads(t_node);
@@ -669,9 +681,10 @@ void sleep(int sec) {
 
 	uint64_t time = getCurrentTimeMillis();
 	runningThread->timers->sleepEndTime = time + sec * 1000;
-
+	cout << "/----------------" << endl;
 	cout << "thread going to sleep for " << sec << " seconds, id: "
 			<< runningThread->stats->threadID << endl;
+	cout << "----------------/" << endl;
 	bool firstTime = true;
 	while (runningThread->timers->sleepEndTime > time) {
 		if (!firstTime) {
@@ -783,6 +796,7 @@ void clean() {
 		printStats(t_node);
 		free(deque(&masterList));
 	}
+	exit(0);
 }
 
 /** @brief The calling thread yields the CPU.
