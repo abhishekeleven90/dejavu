@@ -1,0 +1,7 @@
+The Javadoc like can be accessed from ./html/MyThread_8h.html.
+
+To build the code run 'make' from inside this directory.
+Now, run the output file test.o through command './test.o'.
+
+Also, the project is being maintained at the link: https://github.com/abhiagar90/dejavu/.
+

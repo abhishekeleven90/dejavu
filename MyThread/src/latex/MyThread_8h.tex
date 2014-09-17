@@ -1,0 +1,590 @@
+\hypertarget{MyThread_8h}{\section{My\-Thread.\-h File Reference}
+\label{MyThread_8h}\index{My\-Thread.\-h@{My\-Thread.\-h}}
+}
+{\ttfamily \#include $<$inttypes.\-h$>$}\\*
+{\ttfamily \#include $<$time.\-h$>$}\\*
+{\ttfamily \#include $<$sys/time.\-h$>$}\\*
+{\ttfamily \#include $<$stdio.\-h$>$}\\*
+{\ttfamily \#include $<$setjmp.\-h$>$}\\*
+{\ttfamily \#include $<$signal.\-h$>$}\\*
+{\ttfamily \#include $<$list$>$}\\*
+{\ttfamily \#include $<$iostream$>$}\\*
+{\ttfamily \#include $<$malloc.\-h$>$}\\*
+{\ttfamily \#include $<$unistd.\-h$>$}\\*
+\subsection*{Classes}
+\begin{DoxyCompactItemize}
+\item 
+struct \hyperlink{structStatistics}{Statistics}
+\item 
+struct \hyperlink{structTimers}{Timers}
+\item 
+struct \hyperlink{structThread__node}{Thread\-\_\-node}
+\end{DoxyCompactItemize}
+\subsection*{Macros}
+\begin{DoxyCompactItemize}
+\item 
+\#define \hyperlink{MyThread_8h_aacbb9e1f38be71e22df1584a37c56693}{\-\_\-\-\_\-\-S\-T\-D\-C\-\_\-\-F\-O\-R\-M\-A\-T\-\_\-\-M\-A\-C\-R\-O\-S}
+\item 
+\#define \hyperlink{MyThread_8h_a0a6a66bef3d9d62d9b2b0663a7b75e5c}{J\-B\-\_\-\-S\-P}~4
+\item 
+\#define \hyperlink{MyThread_8h_a60a2507e1f78d339c5d06b3a11843640}{J\-B\-\_\-\-P\-C}~5
+\item 
+\#define \hyperlink{MyThread_8h_a606086ad31e2c50d9cb6fae92706c883}{T\-Q}~2
+\item 
+\#define \hyperlink{MyThread_8h_a6423a880df59733d2d9b509c7718d3a9}{S\-T\-A\-C\-K\-\_\-\-S\-I\-Z\-E}~4096
+\item 
+\#define \hyperlink{MyThread_8h_a0240ac851181b84ac374872dc5434ee4}{N}~50
+\end{DoxyCompactItemize}
+\subsection*{Typedefs}
+\begin{DoxyCompactItemize}
+\item 
+typedef unsigned int \hyperlink{MyThread_8h_a2bc144218f3051b70834068a1d309e58}{address\-\_\-t}
+\end{DoxyCompactItemize}
+\subsection*{Enumerations}
+\begin{DoxyCompactItemize}
+\item 
+enum \hyperlink{MyThread_8h_a5d74787dedbc4e11c1ab15bf487e61f8}{State} \{ \\*
+\hyperlink{MyThread_8h_a5d74787dedbc4e11c1ab15bf487e61f8aec34b0b90541576a22697631105dc847}{N\-E\-W}, 
+\hyperlink{MyThread_8h_a5d74787dedbc4e11c1ab15bf487e61f8a6564f2f3e15be06b670547bbcaaf0798}{R\-E\-A\-D\-Y}, 
+\hyperlink{MyThread_8h_a5d74787dedbc4e11c1ab15bf487e61f8a1061be6c3fb88d32829cba6f6b2be304}{R\-U\-N\-N\-I\-N\-G}, 
+\hyperlink{MyThread_8h_a5d74787dedbc4e11c1ab15bf487e61f8a488282601451a751e0f0e770b15d4235}{S\-L\-E\-E\-P\-I\-N\-G}, 
+\\*
+\hyperlink{MyThread_8h_a5d74787dedbc4e11c1ab15bf487e61f8a1c2114335a42993ac5cc5dbf65f83d41}{S\-U\-S\-P\-E\-N\-D\-E\-D}, 
+\hyperlink{MyThread_8h_a5d74787dedbc4e11c1ab15bf487e61f8aae88752b9379248f07e2c3fdc064d998}{D\-E\-L\-E\-T\-E\-D}, 
+\hyperlink{MyThread_8h_a5d74787dedbc4e11c1ab15bf487e61f8a240c1965a48eaf409ba68c4cc9462ac5}{T\-E\-R\-M\-I\-N\-A\-T\-E\-D}, 
+\hyperlink{MyThread_8h_a5d74787dedbc4e11c1ab15bf487e61f8a757971c0bc5a1972d5f1b1be2c0e2087}{W\-A\-I\-T\-I\-N\-G}
+ \}
+\end{DoxyCompactItemize}
+\subsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hyperlink{MyThread_8h_a2bc144218f3051b70834068a1d309e58}{address\-\_\-t} \hyperlink{MyThread_8h_aae26f62d8f4b9821bd60d618252f7556}{translate\-\_\-address} (\hyperlink{MyThread_8h_a2bc144218f3051b70834068a1d309e58}{address\-\_\-t} addr)
+\item 
+void \hyperlink{MyThread_8h_a0e63c6dfeae5fac7242a9792d9cfe7d9}{enque} (list$<$ \hyperlink{structThread__node}{Thread\-\_\-node} $\ast$ $>$ $\ast$l, \hyperlink{structThread__node}{Thread\-\_\-node} $\ast$node)
+\item 
+\hyperlink{structThread__node}{Thread\-\_\-node} $\ast$ \hyperlink{MyThread_8h_a08281b2411dc009ce108d64375fa78ce}{deque} (list$<$ \hyperlink{structThread__node}{Thread\-\_\-node} $\ast$ $>$ $\ast$l)
+\item 
+void \hyperlink{MyThread_8h_ad3e95fa7b75f49a17724cc423cccbc1f}{initialize\-Thread} (\hyperlink{structThread__node}{Thread\-\_\-node} $\ast$t\-\_\-node)
+\item 
+void \hyperlink{MyThread_8h_a3ae4b38b18b1d390dcdb9d1a445f03f1}{switch\-Threads} ()
+\item 
+void \hyperlink{MyThread_8h_a72236afaeafbe0e1902c9887bdb3e3a2}{check\-If\-Sleep\-Done} (\hyperlink{structThread__node}{Thread\-\_\-node} $\ast$t\-\_\-node)
+\item 
+unsigned long int \hyperlink{MyThread_8h_af6169fa61eeb112118e7fe87087ca44f}{translate\-\_\-address} (unsigned long int addr)
+\item 
+void \hyperlink{MyThread_8h_a68c750fd32abff4f3a57522289870596}{set\-Up} (char $\ast$stack, void($\ast$f)(void))
+\item 
+\hyperlink{structThread__node}{Thread\-\_\-node} $\ast$ \hyperlink{MyThread_8h_a0634293cf5358206cde11f658ef9f4b6}{search\-In\-Queue} (int thread\-Id, list$<$ \hyperlink{structThread__node}{Thread\-\_\-node} $\ast$ $>$ $\ast$l)
+\item 
+void \hyperlink{MyThread_8h_a4840e11151e50ed8994a106cb666eb74}{print\-Queue} (list$<$ \hyperlink{structThread__node}{Thread\-\_\-node} $\ast$ $>$ $\ast$l)
+\item 
+bool \hyperlink{MyThread_8h_a3dfa3b3fb5d4eba0b69c5778a033410c}{is\-Valid\-Thread\-I\-D} (int thread\-Id)
+\item 
+void \hyperlink{MyThread_8h_a761287e694f57d3f122288e91896f6e3}{protector} (void)
+\item 
+int \hyperlink{MyThread_8h_a1f49b6f3dfe8f1b66d51e3dd239f72dc}{create\-Helper} (void($\ast$fn)(void), void $\ast$($\ast$fn\-\_\-arg)(void $\ast$), void $\ast$arg)
+\item 
+void \hyperlink{MyThread_8h_ad8127b77d501c525380db76fa7a0f5b9}{change\-State} (\hyperlink{structThread__node}{Thread\-\_\-node} $\ast$node, \hyperlink{MyThread_8h_a5d74787dedbc4e11c1ab15bf487e61f8}{State} state)
+\item 
+uint64\-\_\-t \hyperlink{MyThread_8h_a3856770ac5389d37e30b9cc8d9ac06f6}{convert\-To\-Millis} (timeval time)
+\item 
+uint64\-\_\-t \hyperlink{MyThread_8h_a50b5eeb19f427e9bc8f16c757d2c061e}{get\-Time\-Diff} (timeval \hyperlink{MyThread_8h_a60de64d75454385b23995437f1d72669}{start}, timeval end)
+\item 
+\hyperlink{structTimers}{Timers} $\ast$ \hyperlink{MyThread_8h_a459492f8ca3f158084b2d304b0d42078}{get\-Timers} (int thread\-I\-D)
+\item 
+void \hyperlink{MyThread_8h_adabbc20b805cc6ff1527517381f31d5e}{resume\-Waiting\-Threads} (\hyperlink{structThread__node}{Thread\-\_\-node} $\ast$t\-\_\-node)
+\item 
+void \hyperlink{MyThread_8h_a0d0f017de2ad3e18b63dd230a3ec2347}{move\-Thread} (\hyperlink{structThread__node}{Thread\-\_\-node} $\ast$t\-\_\-node, \hyperlink{MyThread_8h_a5d74787dedbc4e11c1ab15bf487e61f8}{State} from\-State, \hyperlink{MyThread_8h_a5d74787dedbc4e11c1ab15bf487e61f8}{State} to\-State)
+\item 
+void \hyperlink{MyThread_8h_ad9afebcff07c488101aa40bfd838cfe9}{empty\-Queue} (list$<$ \hyperlink{structThread__node}{Thread\-\_\-node} $\ast$ $>$ $\ast$queue)
+\item 
+void \hyperlink{MyThread_8h_a4f40d766e9f41eef1632181df04c2a6a}{print\-Stats} (\hyperlink{structThread__node}{Thread\-\_\-node} $\ast$t\-\_\-node)
+\item 
+void \hyperlink{MyThread_8h_a5c8b08d47b83a57bf12ecd346612264a}{print\-Time} (unsigned long sec)
+\item 
+uint64\-\_\-t \hyperlink{MyThread_8h_a60c6f3f0581c024f298d6e67782b5c36}{get\-Current\-Time\-Millis} ()
+\item 
+int \hyperlink{MyThread_8h_a7762dcffbc0aaaa1c0d128b3944ed124}{create} (void($\ast$f)(void))
+\begin{DoxyCompactList}\small\item\em Creates a no-\/return-\/type and no-\/arg thread. \end{DoxyCompactList}\item 
+int \hyperlink{MyThread_8h_aea93026f92028ac88f6b60cd2f3e438b}{get\-I\-D} ()
+\begin{DoxyCompactList}\small\item\em Returns it's own thread I\-D to the running thread. \end{DoxyCompactList}\item 
+void \hyperlink{MyThread_8h_acf5627238bb2aa0413ca6807693537a8}{dispatch} (int sig)
+\begin{DoxyCompactList}\small\item\em A scheduler for our thread library. \end{DoxyCompactList}\item 
+void \hyperlink{MyThread_8h_a60de64d75454385b23995437f1d72669}{start} ()
+\begin{DoxyCompactList}\small\item\em Starts the thread environment. \end{DoxyCompactList}\item 
+void \hyperlink{MyThread_8h_af8419c7ea325422dd1533704af86a437}{run} (int thread\-I\-D)
+\begin{DoxyCompactList}\small\item\em Submits particular thread to scheduler for execution. \end{DoxyCompactList}\item 
+void \hyperlink{MyThread_8h_afd35b2834f453381c76f80b78290990f}{suspend} (int thread\-I\-D)
+\begin{DoxyCompactList}\small\item\em Suspends the thread. \end{DoxyCompactList}\item 
+void \hyperlink{MyThread_8h_ad2dbc3803e2d0b957284851bf1c7c555}{resume} (int thread\-I\-D)
+\begin{DoxyCompactList}\small\item\em Resumes a suspended thread. \end{DoxyCompactList}\item 
+void \hyperlink{MyThread_8h_a58c8b2ad0ea491a6642e5e1cbd358c89}{yield} ()
+\begin{DoxyCompactList}\small\item\em The calling thread yields the C\-P\-U. \end{DoxyCompactList}\item 
+void \hyperlink{MyThread_8h_a33a9131781a68420dba3e90b223268a2}{delete\-Thread} (int thread\-I\-D)
+\begin{DoxyCompactList}\small\item\em Deletes a particular thread. \end{DoxyCompactList}\item 
+void \hyperlink{MyThread_8h_ad56f642a71921f26b13d002f70c913c2}{sleep} (int sec)
+\begin{DoxyCompactList}\small\item\em Sleeps the calling thread for sec seconds. \end{DoxyCompactList}\item 
+\hyperlink{structStatistics}{Statistics} $\ast$ \hyperlink{MyThread_8h_a560fc647cf45d1ecd91782d82d4ac464}{get\-Status} (int thread\-I\-D)
+\begin{DoxyCompactList}\small\item\em Returns thread \hyperlink{structStatistics}{Statistics} with id as thread\-I\-D Could be called from any thread. \end{DoxyCompactList}\item 
+int \hyperlink{MyThread_8h_a1407f435441597a947b29c1d9066d451}{create\-With\-Args} (void $\ast$($\ast$f)(void $\ast$), void $\ast$arg)
+\begin{DoxyCompactList}\small\item\em Creates a return-\/type and arg thread. \end{DoxyCompactList}\item 
+void \hyperlink{MyThread_8h_a2bbe646c052baf99f04a367ef6031d74}{clean} ()
+\begin{DoxyCompactList}\small\item\em cleans up everything. \end{DoxyCompactList}\item 
+void \hyperlink{MyThread_8h_a9277eb273c55d9b61fe955cfe5097faa}{J\-O\-I\-N} (int thread\-I\-D)
+\begin{DoxyCompactList}\small\item\em Calling thread waits till thread with I\-D thread\-I\-D completes. \end{DoxyCompactList}\item 
+void $\ast$ \hyperlink{MyThread_8h_ad19d9e3409be51c8c5e88b18ab652a40}{Get\-Thread\-Result} (int thread\-I\-D)
+\begin{DoxyCompactList}\small\item\em Calling thread waits till thread with I\-D thread\-I\-D returns. \end{DoxyCompactList}\end{DoxyCompactItemize}
+\subsection*{Variables}
+\begin{DoxyCompactItemize}
+\item 
+sigjmp\-\_\-buf \hyperlink{MyThread_8h_ab5367e3433fa2becb1aff26f411cb713}{jbuf} \mbox{[}\hyperlink{MyThread_8h_a0240ac851181b84ac374872dc5434ee4}{N}\mbox{]}
+\item 
+list$<$ \hyperlink{structThread__node}{Thread\-\_\-node} $\ast$ $>$ \hyperlink{MyThread_8h_a743cf099a86b8a1e8a1405870d50ad47}{new\-Queue}
+\item 
+list$<$ \hyperlink{structThread__node}{Thread\-\_\-node} $\ast$ $>$ \hyperlink{MyThread_8h_a81c020b03ddbbc74a6e1b31154090c71}{ready\-Queue}
+\item 
+list$<$ \hyperlink{structThread__node}{Thread\-\_\-node} $\ast$ $>$ \hyperlink{MyThread_8h_ab4fa96f35071a04c3f2fa530ff2026fb}{suspend\-Queue}
+\item 
+list$<$ \hyperlink{structThread__node}{Thread\-\_\-node} $\ast$ $>$ \hyperlink{MyThread_8h_adc5cb465644312947508c60ddd0c6a95}{delete\-Queue}
+\item 
+list$<$ \hyperlink{structThread__node}{Thread\-\_\-node} $\ast$ $>$ \hyperlink{MyThread_8h_a1c9850611f87e11698d2d1715d83c824}{sleep\-Queue}
+\item 
+list$<$ \hyperlink{structThread__node}{Thread\-\_\-node} $\ast$ $>$ \hyperlink{MyThread_8h_a9b24cd4cb37f9ca342bd18ee1d09efca}{master\-List}
+\item 
+list$<$ \hyperlink{structThread__node}{Thread\-\_\-node} $\ast$ $>$ \hyperlink{MyThread_8h_aa831a34b70d46314329d5808a8da815d}{terminate\-Queue}
+\item 
+list$<$ \hyperlink{structThread__node}{Thread\-\_\-node} $\ast$ $>$ \hyperlink{MyThread_8h_a44d86fb2dcf32b47b4c2ac9f6cd6ab00}{waiting\-Queue}
+\item 
+int \hyperlink{MyThread_8h_a44906166d586465278e806ddc22f197b}{last\-Created\-Thread\-I\-D} = -\/1
+\item 
+\hyperlink{structThread__node}{Thread\-\_\-node} $\ast$ \hyperlink{MyThread_8h_a3d535dfac63107d25af5b723e9924de5}{running\-Thread}
+\end{DoxyCompactItemize}
+
+
+\subsection{Macro Definition Documentation}
+\hypertarget{MyThread_8h_aacbb9e1f38be71e22df1584a37c56693}{\index{My\-Thread.\-h@{My\-Thread.\-h}!\-\_\-\-\_\-\-S\-T\-D\-C\-\_\-\-F\-O\-R\-M\-A\-T\-\_\-\-M\-A\-C\-R\-O\-S@{\-\_\-\-\_\-\-S\-T\-D\-C\-\_\-\-F\-O\-R\-M\-A\-T\-\_\-\-M\-A\-C\-R\-O\-S}}
+\index{\-\_\-\-\_\-\-S\-T\-D\-C\-\_\-\-F\-O\-R\-M\-A\-T\-\_\-\-M\-A\-C\-R\-O\-S@{\-\_\-\-\_\-\-S\-T\-D\-C\-\_\-\-F\-O\-R\-M\-A\-T\-\_\-\-M\-A\-C\-R\-O\-S}!MyThread.h@{My\-Thread.\-h}}
+\subsubsection[{\-\_\-\-\_\-\-S\-T\-D\-C\-\_\-\-F\-O\-R\-M\-A\-T\-\_\-\-M\-A\-C\-R\-O\-S}]{\setlength{\rightskip}{0pt plus 5cm}\#define \-\_\-\-\_\-\-S\-T\-D\-C\-\_\-\-F\-O\-R\-M\-A\-T\-\_\-\-M\-A\-C\-R\-O\-S}}\label{MyThread_8h_aacbb9e1f38be71e22df1584a37c56693}
+\hypertarget{MyThread_8h_a60a2507e1f78d339c5d06b3a11843640}{\index{My\-Thread.\-h@{My\-Thread.\-h}!J\-B\-\_\-\-P\-C@{J\-B\-\_\-\-P\-C}}
+\index{J\-B\-\_\-\-P\-C@{J\-B\-\_\-\-P\-C}!MyThread.h@{My\-Thread.\-h}}
+\subsubsection[{J\-B\-\_\-\-P\-C}]{\setlength{\rightskip}{0pt plus 5cm}\#define J\-B\-\_\-\-P\-C~5}}\label{MyThread_8h_a60a2507e1f78d339c5d06b3a11843640}
+\hypertarget{MyThread_8h_a0a6a66bef3d9d62d9b2b0663a7b75e5c}{\index{My\-Thread.\-h@{My\-Thread.\-h}!J\-B\-\_\-\-S\-P@{J\-B\-\_\-\-S\-P}}
+\index{J\-B\-\_\-\-S\-P@{J\-B\-\_\-\-S\-P}!MyThread.h@{My\-Thread.\-h}}
+\subsubsection[{J\-B\-\_\-\-S\-P}]{\setlength{\rightskip}{0pt plus 5cm}\#define J\-B\-\_\-\-S\-P~4}}\label{MyThread_8h_a0a6a66bef3d9d62d9b2b0663a7b75e5c}
+\hypertarget{MyThread_8h_a0240ac851181b84ac374872dc5434ee4}{\index{My\-Thread.\-h@{My\-Thread.\-h}!N@{N}}
+\index{N@{N}!MyThread.h@{My\-Thread.\-h}}
+\subsubsection[{N}]{\setlength{\rightskip}{0pt plus 5cm}\#define N~50}}\label{MyThread_8h_a0240ac851181b84ac374872dc5434ee4}
+\hypertarget{MyThread_8h_a6423a880df59733d2d9b509c7718d3a9}{\index{My\-Thread.\-h@{My\-Thread.\-h}!S\-T\-A\-C\-K\-\_\-\-S\-I\-Z\-E@{S\-T\-A\-C\-K\-\_\-\-S\-I\-Z\-E}}
+\index{S\-T\-A\-C\-K\-\_\-\-S\-I\-Z\-E@{S\-T\-A\-C\-K\-\_\-\-S\-I\-Z\-E}!MyThread.h@{My\-Thread.\-h}}
+\subsubsection[{S\-T\-A\-C\-K\-\_\-\-S\-I\-Z\-E}]{\setlength{\rightskip}{0pt plus 5cm}\#define S\-T\-A\-C\-K\-\_\-\-S\-I\-Z\-E~4096}}\label{MyThread_8h_a6423a880df59733d2d9b509c7718d3a9}
+\hypertarget{MyThread_8h_a606086ad31e2c50d9cb6fae92706c883}{\index{My\-Thread.\-h@{My\-Thread.\-h}!T\-Q@{T\-Q}}
+\index{T\-Q@{T\-Q}!MyThread.h@{My\-Thread.\-h}}
+\subsubsection[{T\-Q}]{\setlength{\rightskip}{0pt plus 5cm}\#define T\-Q~2}}\label{MyThread_8h_a606086ad31e2c50d9cb6fae92706c883}
+
+
+\subsection{Typedef Documentation}
+\hypertarget{MyThread_8h_a2bc144218f3051b70834068a1d309e58}{\index{My\-Thread.\-h@{My\-Thread.\-h}!address\-\_\-t@{address\-\_\-t}}
+\index{address\-\_\-t@{address\-\_\-t}!MyThread.h@{My\-Thread.\-h}}
+\subsubsection[{address\-\_\-t}]{\setlength{\rightskip}{0pt plus 5cm}typedef unsigned int {\bf address\-\_\-t}}}\label{MyThread_8h_a2bc144218f3051b70834068a1d309e58}
+
+
+\subsection{Enumeration Type Documentation}
+\hypertarget{MyThread_8h_a5d74787dedbc4e11c1ab15bf487e61f8}{\index{My\-Thread.\-h@{My\-Thread.\-h}!State@{State}}
+\index{State@{State}!MyThread.h@{My\-Thread.\-h}}
+\subsubsection[{State}]{\setlength{\rightskip}{0pt plus 5cm}enum {\bf State}}}\label{MyThread_8h_a5d74787dedbc4e11c1ab15bf487e61f8}
+\begin{Desc}
+\item[Enumerator]\par
+\begin{description}
+\index{N\-E\-W@{N\-E\-W}!My\-Thread.\-h@{My\-Thread.\-h}}\index{My\-Thread.\-h@{My\-Thread.\-h}!N\-E\-W@{N\-E\-W}}\item[{\em 
+\hypertarget{MyThread_8h_a5d74787dedbc4e11c1ab15bf487e61f8aec34b0b90541576a22697631105dc847}{N\-E\-W}\label{MyThread_8h_a5d74787dedbc4e11c1ab15bf487e61f8aec34b0b90541576a22697631105dc847}
+}]\index{R\-E\-A\-D\-Y@{R\-E\-A\-D\-Y}!My\-Thread.\-h@{My\-Thread.\-h}}\index{My\-Thread.\-h@{My\-Thread.\-h}!R\-E\-A\-D\-Y@{R\-E\-A\-D\-Y}}\item[{\em 
+\hypertarget{MyThread_8h_a5d74787dedbc4e11c1ab15bf487e61f8a6564f2f3e15be06b670547bbcaaf0798}{R\-E\-A\-D\-Y}\label{MyThread_8h_a5d74787dedbc4e11c1ab15bf487e61f8a6564f2f3e15be06b670547bbcaaf0798}
+}]\index{R\-U\-N\-N\-I\-N\-G@{R\-U\-N\-N\-I\-N\-G}!My\-Thread.\-h@{My\-Thread.\-h}}\index{My\-Thread.\-h@{My\-Thread.\-h}!R\-U\-N\-N\-I\-N\-G@{R\-U\-N\-N\-I\-N\-G}}\item[{\em 
+\hypertarget{MyThread_8h_a5d74787dedbc4e11c1ab15bf487e61f8a1061be6c3fb88d32829cba6f6b2be304}{R\-U\-N\-N\-I\-N\-G}\label{MyThread_8h_a5d74787dedbc4e11c1ab15bf487e61f8a1061be6c3fb88d32829cba6f6b2be304}
+}]\index{S\-L\-E\-E\-P\-I\-N\-G@{S\-L\-E\-E\-P\-I\-N\-G}!My\-Thread.\-h@{My\-Thread.\-h}}\index{My\-Thread.\-h@{My\-Thread.\-h}!S\-L\-E\-E\-P\-I\-N\-G@{S\-L\-E\-E\-P\-I\-N\-G}}\item[{\em 
+\hypertarget{MyThread_8h_a5d74787dedbc4e11c1ab15bf487e61f8a488282601451a751e0f0e770b15d4235}{S\-L\-E\-E\-P\-I\-N\-G}\label{MyThread_8h_a5d74787dedbc4e11c1ab15bf487e61f8a488282601451a751e0f0e770b15d4235}
+}]\index{S\-U\-S\-P\-E\-N\-D\-E\-D@{S\-U\-S\-P\-E\-N\-D\-E\-D}!My\-Thread.\-h@{My\-Thread.\-h}}\index{My\-Thread.\-h@{My\-Thread.\-h}!S\-U\-S\-P\-E\-N\-D\-E\-D@{S\-U\-S\-P\-E\-N\-D\-E\-D}}\item[{\em 
+\hypertarget{MyThread_8h_a5d74787dedbc4e11c1ab15bf487e61f8a1c2114335a42993ac5cc5dbf65f83d41}{S\-U\-S\-P\-E\-N\-D\-E\-D}\label{MyThread_8h_a5d74787dedbc4e11c1ab15bf487e61f8a1c2114335a42993ac5cc5dbf65f83d41}
+}]\index{D\-E\-L\-E\-T\-E\-D@{D\-E\-L\-E\-T\-E\-D}!My\-Thread.\-h@{My\-Thread.\-h}}\index{My\-Thread.\-h@{My\-Thread.\-h}!D\-E\-L\-E\-T\-E\-D@{D\-E\-L\-E\-T\-E\-D}}\item[{\em 
+\hypertarget{MyThread_8h_a5d74787dedbc4e11c1ab15bf487e61f8aae88752b9379248f07e2c3fdc064d998}{D\-E\-L\-E\-T\-E\-D}\label{MyThread_8h_a5d74787dedbc4e11c1ab15bf487e61f8aae88752b9379248f07e2c3fdc064d998}
+}]\index{T\-E\-R\-M\-I\-N\-A\-T\-E\-D@{T\-E\-R\-M\-I\-N\-A\-T\-E\-D}!My\-Thread.\-h@{My\-Thread.\-h}}\index{My\-Thread.\-h@{My\-Thread.\-h}!T\-E\-R\-M\-I\-N\-A\-T\-E\-D@{T\-E\-R\-M\-I\-N\-A\-T\-E\-D}}\item[{\em 
+\hypertarget{MyThread_8h_a5d74787dedbc4e11c1ab15bf487e61f8a240c1965a48eaf409ba68c4cc9462ac5}{T\-E\-R\-M\-I\-N\-A\-T\-E\-D}\label{MyThread_8h_a5d74787dedbc4e11c1ab15bf487e61f8a240c1965a48eaf409ba68c4cc9462ac5}
+}]\index{W\-A\-I\-T\-I\-N\-G@{W\-A\-I\-T\-I\-N\-G}!My\-Thread.\-h@{My\-Thread.\-h}}\index{My\-Thread.\-h@{My\-Thread.\-h}!W\-A\-I\-T\-I\-N\-G@{W\-A\-I\-T\-I\-N\-G}}\item[{\em 
+\hypertarget{MyThread_8h_a5d74787dedbc4e11c1ab15bf487e61f8a757971c0bc5a1972d5f1b1be2c0e2087}{W\-A\-I\-T\-I\-N\-G}\label{MyThread_8h_a5d74787dedbc4e11c1ab15bf487e61f8a757971c0bc5a1972d5f1b1be2c0e2087}
+}]\end{description}
+\end{Desc}
+
+
+\subsection{Function Documentation}
+\hypertarget{MyThread_8h_ad8127b77d501c525380db76fa7a0f5b9}{\index{My\-Thread.\-h@{My\-Thread.\-h}!change\-State@{change\-State}}
+\index{change\-State@{change\-State}!MyThread.h@{My\-Thread.\-h}}
+\subsubsection[{change\-State}]{\setlength{\rightskip}{0pt plus 5cm}void change\-State (
+\begin{DoxyParamCaption}
+\item[{{\bf Thread\-\_\-node} $\ast$}]{node, }
+\item[{{\bf State}}]{state}
+\end{DoxyParamCaption}
+)}}\label{MyThread_8h_ad8127b77d501c525380db76fa7a0f5b9}
+\hypertarget{MyThread_8h_a72236afaeafbe0e1902c9887bdb3e3a2}{\index{My\-Thread.\-h@{My\-Thread.\-h}!check\-If\-Sleep\-Done@{check\-If\-Sleep\-Done}}
+\index{check\-If\-Sleep\-Done@{check\-If\-Sleep\-Done}!MyThread.h@{My\-Thread.\-h}}
+\subsubsection[{check\-If\-Sleep\-Done}]{\setlength{\rightskip}{0pt plus 5cm}void check\-If\-Sleep\-Done (
+\begin{DoxyParamCaption}
+\item[{{\bf Thread\-\_\-node} $\ast$}]{t\-\_\-node}
+\end{DoxyParamCaption}
+)}}\label{MyThread_8h_a72236afaeafbe0e1902c9887bdb3e3a2}
+\hypertarget{MyThread_8h_a2bbe646c052baf99f04a367ef6031d74}{\index{My\-Thread.\-h@{My\-Thread.\-h}!clean@{clean}}
+\index{clean@{clean}!MyThread.h@{My\-Thread.\-h}}
+\subsubsection[{clean}]{\setlength{\rightskip}{0pt plus 5cm}void clean (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)}}\label{MyThread_8h_a2bbe646c052baf99f04a367ef6031d74}
+
+
+cleans up everything. 
+
+Stops scheduler, frees all the space allocated, print statistics per thread. \hypertarget{MyThread_8h_a3856770ac5389d37e30b9cc8d9ac06f6}{\index{My\-Thread.\-h@{My\-Thread.\-h}!convert\-To\-Millis@{convert\-To\-Millis}}
+\index{convert\-To\-Millis@{convert\-To\-Millis}!MyThread.h@{My\-Thread.\-h}}
+\subsubsection[{convert\-To\-Millis}]{\setlength{\rightskip}{0pt plus 5cm}uint64\-\_\-t convert\-To\-Millis (
+\begin{DoxyParamCaption}
+\item[{timeval}]{time}
+\end{DoxyParamCaption}
+)}}\label{MyThread_8h_a3856770ac5389d37e30b9cc8d9ac06f6}
+\hypertarget{MyThread_8h_a7762dcffbc0aaaa1c0d128b3944ed124}{\index{My\-Thread.\-h@{My\-Thread.\-h}!create@{create}}
+\index{create@{create}!MyThread.h@{My\-Thread.\-h}}
+\subsubsection[{create}]{\setlength{\rightskip}{0pt plus 5cm}int create (
+\begin{DoxyParamCaption}
+\item[{void($\ast$)(void)}]{f}
+\end{DoxyParamCaption}
+)}}\label{MyThread_8h_a7762dcffbc0aaaa1c0d128b3944ed124}
+
+
+Creates a no-\/return-\/type and no-\/arg thread. 
+
+Creates a thread, whose execution starts from function f which has no parameter and no return type; however create returns thread I\-D of created thread. \hypertarget{MyThread_8h_a1f49b6f3dfe8f1b66d51e3dd239f72dc}{\index{My\-Thread.\-h@{My\-Thread.\-h}!create\-Helper@{create\-Helper}}
+\index{create\-Helper@{create\-Helper}!MyThread.h@{My\-Thread.\-h}}
+\subsubsection[{create\-Helper}]{\setlength{\rightskip}{0pt plus 5cm}int create\-Helper (
+\begin{DoxyParamCaption}
+\item[{void($\ast$)(void)}]{fn, }
+\item[{void $\ast$($\ast$)(void $\ast$)}]{fn\-\_\-arg = {\ttfamily NULL}, }
+\item[{void $\ast$}]{arg = {\ttfamily NULL}}
+\end{DoxyParamCaption}
+)}}\label{MyThread_8h_a1f49b6f3dfe8f1b66d51e3dd239f72dc}
+\hypertarget{MyThread_8h_a1407f435441597a947b29c1d9066d451}{\index{My\-Thread.\-h@{My\-Thread.\-h}!create\-With\-Args@{create\-With\-Args}}
+\index{create\-With\-Args@{create\-With\-Args}!MyThread.h@{My\-Thread.\-h}}
+\subsubsection[{create\-With\-Args}]{\setlength{\rightskip}{0pt plus 5cm}int create\-With\-Args (
+\begin{DoxyParamCaption}
+\item[{void $\ast$($\ast$)(void $\ast$)}]{f, }
+\item[{void $\ast$}]{arg}
+\end{DoxyParamCaption}
+)}}\label{MyThread_8h_a1407f435441597a947b29c1d9066d451}
+
+
+Creates a return-\/type and arg thread. 
+
+f is a ptr to a function which takes (void $\ast$) and returns (void $\ast$). Unlike the threads so far, this thread takes arguments, and instead of uselessly looping forever, returns a value in a (void $\ast$). This function returns the id of the thread created. \hypertarget{MyThread_8h_a33a9131781a68420dba3e90b223268a2}{\index{My\-Thread.\-h@{My\-Thread.\-h}!delete\-Thread@{delete\-Thread}}
+\index{delete\-Thread@{delete\-Thread}!MyThread.h@{My\-Thread.\-h}}
+\subsubsection[{delete\-Thread}]{\setlength{\rightskip}{0pt plus 5cm}void delete\-Thread (
+\begin{DoxyParamCaption}
+\item[{int}]{thread\-I\-D}
+\end{DoxyParamCaption}
+)}}\label{MyThread_8h_a33a9131781a68420dba3e90b223268a2}
+
+
+Deletes a particular thread. 
+
+Could be called from any other thread. Deleted thread object lives, but it will lose all executing capability. \hypertarget{MyThread_8h_a08281b2411dc009ce108d64375fa78ce}{\index{My\-Thread.\-h@{My\-Thread.\-h}!deque@{deque}}
+\index{deque@{deque}!MyThread.h@{My\-Thread.\-h}}
+\subsubsection[{deque}]{\setlength{\rightskip}{0pt plus 5cm}{\bf Thread\-\_\-node} $\ast$ deque (
+\begin{DoxyParamCaption}
+\item[{list$<$ {\bf Thread\-\_\-node} $\ast$ $>$ $\ast$}]{l}
+\end{DoxyParamCaption}
+)}}\label{MyThread_8h_a08281b2411dc009ce108d64375fa78ce}
+\hypertarget{MyThread_8h_acf5627238bb2aa0413ca6807693537a8}{\index{My\-Thread.\-h@{My\-Thread.\-h}!dispatch@{dispatch}}
+\index{dispatch@{dispatch}!MyThread.h@{My\-Thread.\-h}}
+\subsubsection[{dispatch}]{\setlength{\rightskip}{0pt plus 5cm}void dispatch (
+\begin{DoxyParamCaption}
+\item[{int}]{sig}
+\end{DoxyParamCaption}
+)}}\label{MyThread_8h_acf5627238bb2aa0413ca6807693537a8}
+
+
+A scheduler for our thread library. 
+
+\hyperlink{MyThread_8h_acf5627238bb2aa0413ca6807693537a8}{dispatch()} is called after every time quantum finishes. We are simulating a round robin scheduler. \hypertarget{MyThread_8h_ad9afebcff07c488101aa40bfd838cfe9}{\index{My\-Thread.\-h@{My\-Thread.\-h}!empty\-Queue@{empty\-Queue}}
+\index{empty\-Queue@{empty\-Queue}!MyThread.h@{My\-Thread.\-h}}
+\subsubsection[{empty\-Queue}]{\setlength{\rightskip}{0pt plus 5cm}void empty\-Queue (
+\begin{DoxyParamCaption}
+\item[{list$<$ {\bf Thread\-\_\-node} $\ast$ $>$ $\ast$}]{queue}
+\end{DoxyParamCaption}
+)}}\label{MyThread_8h_ad9afebcff07c488101aa40bfd838cfe9}
+\hypertarget{MyThread_8h_a0e63c6dfeae5fac7242a9792d9cfe7d9}{\index{My\-Thread.\-h@{My\-Thread.\-h}!enque@{enque}}
+\index{enque@{enque}!MyThread.h@{My\-Thread.\-h}}
+\subsubsection[{enque}]{\setlength{\rightskip}{0pt plus 5cm}void enque (
+\begin{DoxyParamCaption}
+\item[{list$<$ {\bf Thread\-\_\-node} $\ast$ $>$ $\ast$}]{l, }
+\item[{{\bf Thread\-\_\-node} $\ast$}]{node}
+\end{DoxyParamCaption}
+)}}\label{MyThread_8h_a0e63c6dfeae5fac7242a9792d9cfe7d9}
+\hypertarget{MyThread_8h_a60c6f3f0581c024f298d6e67782b5c36}{\index{My\-Thread.\-h@{My\-Thread.\-h}!get\-Current\-Time\-Millis@{get\-Current\-Time\-Millis}}
+\index{get\-Current\-Time\-Millis@{get\-Current\-Time\-Millis}!MyThread.h@{My\-Thread.\-h}}
+\subsubsection[{get\-Current\-Time\-Millis}]{\setlength{\rightskip}{0pt plus 5cm}uint64\-\_\-t get\-Current\-Time\-Millis (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)}}\label{MyThread_8h_a60c6f3f0581c024f298d6e67782b5c36}
+\hypertarget{MyThread_8h_aea93026f92028ac88f6b60cd2f3e438b}{\index{My\-Thread.\-h@{My\-Thread.\-h}!get\-I\-D@{get\-I\-D}}
+\index{get\-I\-D@{get\-I\-D}!MyThread.h@{My\-Thread.\-h}}
+\subsubsection[{get\-I\-D}]{\setlength{\rightskip}{0pt plus 5cm}int get\-I\-D (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)}}\label{MyThread_8h_aea93026f92028ac88f6b60cd2f3e438b}
+
+
+Returns it's own thread I\-D to the running thread. 
+
+Called from inside the thread. Should return thread I\-D of the current thread. \hypertarget{MyThread_8h_a560fc647cf45d1ecd91782d82d4ac464}{\index{My\-Thread.\-h@{My\-Thread.\-h}!get\-Status@{get\-Status}}
+\index{get\-Status@{get\-Status}!MyThread.h@{My\-Thread.\-h}}
+\subsubsection[{get\-Status}]{\setlength{\rightskip}{0pt plus 5cm}{\bf Statistics} $\ast$ get\-Status (
+\begin{DoxyParamCaption}
+\item[{int}]{thread\-I\-D}
+\end{DoxyParamCaption}
+)}}\label{MyThread_8h_a560fc647cf45d1ecd91782d82d4ac464}
+
+
+Returns thread \hyperlink{structStatistics}{Statistics} with id as thread\-I\-D Could be called from any thread. 
+
+Returns the status of threaded by returning pointer to its statistics Returns N\-U\-L\-L of thread\-I\-D is invalid. \hypertarget{MyThread_8h_ad19d9e3409be51c8c5e88b18ab652a40}{\index{My\-Thread.\-h@{My\-Thread.\-h}!Get\-Thread\-Result@{Get\-Thread\-Result}}
+\index{Get\-Thread\-Result@{Get\-Thread\-Result}!MyThread.h@{My\-Thread.\-h}}
+\subsubsection[{Get\-Thread\-Result}]{\setlength{\rightskip}{0pt plus 5cm}void $\ast$ Get\-Thread\-Result (
+\begin{DoxyParamCaption}
+\item[{int}]{thread\-I\-D}
+\end{DoxyParamCaption}
+)}}\label{MyThread_8h_ad19d9e3409be51c8c5e88b18ab652a40}
+
+
+Calling thread waits till thread with I\-D thread\-I\-D returns. 
+
+Waits till a thread created with the above function returns, and returns the return value of that thread. This function, obviously, waits until that thread is done with. \hypertarget{MyThread_8h_a50b5eeb19f427e9bc8f16c757d2c061e}{\index{My\-Thread.\-h@{My\-Thread.\-h}!get\-Time\-Diff@{get\-Time\-Diff}}
+\index{get\-Time\-Diff@{get\-Time\-Diff}!MyThread.h@{My\-Thread.\-h}}
+\subsubsection[{get\-Time\-Diff}]{\setlength{\rightskip}{0pt plus 5cm}uint64\-\_\-t get\-Time\-Diff (
+\begin{DoxyParamCaption}
+\item[{timeval}]{start, }
+\item[{timeval}]{end}
+\end{DoxyParamCaption}
+)}}\label{MyThread_8h_a50b5eeb19f427e9bc8f16c757d2c061e}
+\hypertarget{MyThread_8h_a459492f8ca3f158084b2d304b0d42078}{\index{My\-Thread.\-h@{My\-Thread.\-h}!get\-Timers@{get\-Timers}}
+\index{get\-Timers@{get\-Timers}!MyThread.h@{My\-Thread.\-h}}
+\subsubsection[{get\-Timers}]{\setlength{\rightskip}{0pt plus 5cm}{\bf Timers} $\ast$ get\-Timers (
+\begin{DoxyParamCaption}
+\item[{int}]{thread\-I\-D}
+\end{DoxyParamCaption}
+)}}\label{MyThread_8h_a459492f8ca3f158084b2d304b0d42078}
+\hypertarget{MyThread_8h_ad3e95fa7b75f49a17724cc423cccbc1f}{\index{My\-Thread.\-h@{My\-Thread.\-h}!initialize\-Thread@{initialize\-Thread}}
+\index{initialize\-Thread@{initialize\-Thread}!MyThread.h@{My\-Thread.\-h}}
+\subsubsection[{initialize\-Thread}]{\setlength{\rightskip}{0pt plus 5cm}void initialize\-Thread (
+\begin{DoxyParamCaption}
+\item[{{\bf Thread\-\_\-node} $\ast$}]{t\-\_\-node}
+\end{DoxyParamCaption}
+)}}\label{MyThread_8h_ad3e95fa7b75f49a17724cc423cccbc1f}
+\hypertarget{MyThread_8h_a3dfa3b3fb5d4eba0b69c5778a033410c}{\index{My\-Thread.\-h@{My\-Thread.\-h}!is\-Valid\-Thread\-I\-D@{is\-Valid\-Thread\-I\-D}}
+\index{is\-Valid\-Thread\-I\-D@{is\-Valid\-Thread\-I\-D}!MyThread.h@{My\-Thread.\-h}}
+\subsubsection[{is\-Valid\-Thread\-I\-D}]{\setlength{\rightskip}{0pt plus 5cm}bool is\-Valid\-Thread\-I\-D (
+\begin{DoxyParamCaption}
+\item[{int}]{thread\-Id}
+\end{DoxyParamCaption}
+)}}\label{MyThread_8h_a3dfa3b3fb5d4eba0b69c5778a033410c}
+\hypertarget{MyThread_8h_a9277eb273c55d9b61fe955cfe5097faa}{\index{My\-Thread.\-h@{My\-Thread.\-h}!J\-O\-I\-N@{J\-O\-I\-N}}
+\index{J\-O\-I\-N@{J\-O\-I\-N}!MyThread.h@{My\-Thread.\-h}}
+\subsubsection[{J\-O\-I\-N}]{\setlength{\rightskip}{0pt plus 5cm}void J\-O\-I\-N (
+\begin{DoxyParamCaption}
+\item[{int}]{thread\-I\-D}
+\end{DoxyParamCaption}
+)}}\label{MyThread_8h_a9277eb273c55d9b61fe955cfe5097faa}
+
+
+Calling thread waits till thread with I\-D thread\-I\-D completes. 
+
+Waits till a thread created with the above function completes, This function, obviously, waits until that thread is done with. \hypertarget{MyThread_8h_a0d0f017de2ad3e18b63dd230a3ec2347}{\index{My\-Thread.\-h@{My\-Thread.\-h}!move\-Thread@{move\-Thread}}
+\index{move\-Thread@{move\-Thread}!MyThread.h@{My\-Thread.\-h}}
+\subsubsection[{move\-Thread}]{\setlength{\rightskip}{0pt plus 5cm}void move\-Thread (
+\begin{DoxyParamCaption}
+\item[{{\bf Thread\-\_\-node} $\ast$}]{t\-\_\-node, }
+\item[{{\bf State}}]{from\-State, }
+\item[{{\bf State}}]{to\-State}
+\end{DoxyParamCaption}
+)}}\label{MyThread_8h_a0d0f017de2ad3e18b63dd230a3ec2347}
+\hypertarget{MyThread_8h_a4840e11151e50ed8994a106cb666eb74}{\index{My\-Thread.\-h@{My\-Thread.\-h}!print\-Queue@{print\-Queue}}
+\index{print\-Queue@{print\-Queue}!MyThread.h@{My\-Thread.\-h}}
+\subsubsection[{print\-Queue}]{\setlength{\rightskip}{0pt plus 5cm}void print\-Queue (
+\begin{DoxyParamCaption}
+\item[{list$<$ {\bf Thread\-\_\-node} $\ast$ $>$ $\ast$}]{l}
+\end{DoxyParamCaption}
+)}}\label{MyThread_8h_a4840e11151e50ed8994a106cb666eb74}
+\hypertarget{MyThread_8h_a4f40d766e9f41eef1632181df04c2a6a}{\index{My\-Thread.\-h@{My\-Thread.\-h}!print\-Stats@{print\-Stats}}
+\index{print\-Stats@{print\-Stats}!MyThread.h@{My\-Thread.\-h}}
+\subsubsection[{print\-Stats}]{\setlength{\rightskip}{0pt plus 5cm}void print\-Stats (
+\begin{DoxyParamCaption}
+\item[{{\bf Thread\-\_\-node} $\ast$}]{t\-\_\-node}
+\end{DoxyParamCaption}
+)}}\label{MyThread_8h_a4f40d766e9f41eef1632181df04c2a6a}
+\hypertarget{MyThread_8h_a5c8b08d47b83a57bf12ecd346612264a}{\index{My\-Thread.\-h@{My\-Thread.\-h}!print\-Time@{print\-Time}}
+\index{print\-Time@{print\-Time}!MyThread.h@{My\-Thread.\-h}}
+\subsubsection[{print\-Time}]{\setlength{\rightskip}{0pt plus 5cm}void print\-Time (
+\begin{DoxyParamCaption}
+\item[{unsigned long}]{sec}
+\end{DoxyParamCaption}
+)}}\label{MyThread_8h_a5c8b08d47b83a57bf12ecd346612264a}
+\hypertarget{MyThread_8h_a761287e694f57d3f122288e91896f6e3}{\index{My\-Thread.\-h@{My\-Thread.\-h}!protector@{protector}}
+\index{protector@{protector}!MyThread.h@{My\-Thread.\-h}}
+\subsubsection[{protector}]{\setlength{\rightskip}{0pt plus 5cm}void protector (
+\begin{DoxyParamCaption}
+\item[{void}]{}
+\end{DoxyParamCaption}
+)}}\label{MyThread_8h_a761287e694f57d3f122288e91896f6e3}
+\hypertarget{MyThread_8h_ad2dbc3803e2d0b957284851bf1c7c555}{\index{My\-Thread.\-h@{My\-Thread.\-h}!resume@{resume}}
+\index{resume@{resume}!MyThread.h@{My\-Thread.\-h}}
+\subsubsection[{resume}]{\setlength{\rightskip}{0pt plus 5cm}void resume (
+\begin{DoxyParamCaption}
+\item[{int}]{thread\-I\-D}
+\end{DoxyParamCaption}
+)}}\label{MyThread_8h_ad2dbc3803e2d0b957284851bf1c7c555}
+
+
+Resumes a suspended thread. 
+
+Could be called from any other thread. Puts the thread back to ready queue from suspended queue. \hypertarget{MyThread_8h_adabbc20b805cc6ff1527517381f31d5e}{\index{My\-Thread.\-h@{My\-Thread.\-h}!resume\-Waiting\-Threads@{resume\-Waiting\-Threads}}
+\index{resume\-Waiting\-Threads@{resume\-Waiting\-Threads}!MyThread.h@{My\-Thread.\-h}}
+\subsubsection[{resume\-Waiting\-Threads}]{\setlength{\rightskip}{0pt plus 5cm}void resume\-Waiting\-Threads (
+\begin{DoxyParamCaption}
+\item[{{\bf Thread\-\_\-node} $\ast$}]{t\-\_\-node}
+\end{DoxyParamCaption}
+)}}\label{MyThread_8h_adabbc20b805cc6ff1527517381f31d5e}
+\hypertarget{MyThread_8h_af8419c7ea325422dd1533704af86a437}{\index{My\-Thread.\-h@{My\-Thread.\-h}!run@{run}}
+\index{run@{run}!MyThread.h@{My\-Thread.\-h}}
+\subsubsection[{run}]{\setlength{\rightskip}{0pt plus 5cm}void run (
+\begin{DoxyParamCaption}
+\item[{int}]{thread\-I\-D}
+\end{DoxyParamCaption}
+)}}\label{MyThread_8h_af8419c7ea325422dd1533704af86a437}
+
+
+Submits particular thread to scheduler for execution. 
+
+Puts a thread to ready queue from new queue. Could be called from any other thread. \hypertarget{MyThread_8h_a0634293cf5358206cde11f658ef9f4b6}{\index{My\-Thread.\-h@{My\-Thread.\-h}!search\-In\-Queue@{search\-In\-Queue}}
+\index{search\-In\-Queue@{search\-In\-Queue}!MyThread.h@{My\-Thread.\-h}}
+\subsubsection[{search\-In\-Queue}]{\setlength{\rightskip}{0pt plus 5cm}{\bf Thread\-\_\-node} $\ast$ search\-In\-Queue (
+\begin{DoxyParamCaption}
+\item[{int}]{thread\-Id, }
+\item[{list$<$ {\bf Thread\-\_\-node} $\ast$ $>$ $\ast$}]{l}
+\end{DoxyParamCaption}
+)}}\label{MyThread_8h_a0634293cf5358206cde11f658ef9f4b6}
+\hypertarget{MyThread_8h_a68c750fd32abff4f3a57522289870596}{\index{My\-Thread.\-h@{My\-Thread.\-h}!set\-Up@{set\-Up}}
+\index{set\-Up@{set\-Up}!MyThread.h@{My\-Thread.\-h}}
+\subsubsection[{set\-Up}]{\setlength{\rightskip}{0pt plus 5cm}void set\-Up (
+\begin{DoxyParamCaption}
+\item[{char $\ast$}]{stack, }
+\item[{void($\ast$)(void)}]{f}
+\end{DoxyParamCaption}
+)}}\label{MyThread_8h_a68c750fd32abff4f3a57522289870596}
+\hypertarget{MyThread_8h_ad56f642a71921f26b13d002f70c913c2}{\index{My\-Thread.\-h@{My\-Thread.\-h}!sleep@{sleep}}
+\index{sleep@{sleep}!MyThread.h@{My\-Thread.\-h}}
+\subsubsection[{sleep}]{\setlength{\rightskip}{0pt plus 5cm}void sleep (
+\begin{DoxyParamCaption}
+\item[{int}]{sec}
+\end{DoxyParamCaption}
+)}}\label{MyThread_8h_ad56f642a71921f26b13d002f70c913c2}
+
+
+Sleeps the calling thread for sec seconds. 
+
+Sleep is not a blocking call. Puts the thread into sleeping state, and on completion puts back to ready queue. \hypertarget{MyThread_8h_a60de64d75454385b23995437f1d72669}{\index{My\-Thread.\-h@{My\-Thread.\-h}!start@{start}}
+\index{start@{start}!MyThread.h@{My\-Thread.\-h}}
+\subsubsection[{start}]{\setlength{\rightskip}{0pt plus 5cm}void start (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)}}\label{MyThread_8h_a60de64d75454385b23995437f1d72669}
+
+
+Starts the thread environment. 
+
+Call in your main method. Moves all the created threads to ready queue \& runs the first one. One called,starts running of thread and never return. So at least one of your thread should have infinite loop. \hypertarget{MyThread_8h_afd35b2834f453381c76f80b78290990f}{\index{My\-Thread.\-h@{My\-Thread.\-h}!suspend@{suspend}}
+\index{suspend@{suspend}!MyThread.h@{My\-Thread.\-h}}
+\subsubsection[{suspend}]{\setlength{\rightskip}{0pt plus 5cm}void suspend (
+\begin{DoxyParamCaption}
+\item[{int}]{thread\-I\-D}
+\end{DoxyParamCaption}
+)}}\label{MyThread_8h_afd35b2834f453381c76f80b78290990f}
+
+
+Suspends the thread. 
+
+Could be called from any thread. Puts the thread in suspended queue. Suspends the thread with I\-D as thread\-I\-D until a \hyperlink{MyThread_8h_ad2dbc3803e2d0b957284851bf1c7c555}{resume()} is not called for the same thread. \hypertarget{MyThread_8h_a3ae4b38b18b1d390dcdb9d1a445f03f1}{\index{My\-Thread.\-h@{My\-Thread.\-h}!switch\-Threads@{switch\-Threads}}
+\index{switch\-Threads@{switch\-Threads}!MyThread.h@{My\-Thread.\-h}}
+\subsubsection[{switch\-Threads}]{\setlength{\rightskip}{0pt plus 5cm}void switch\-Threads (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)}}\label{MyThread_8h_a3ae4b38b18b1d390dcdb9d1a445f03f1}
+\hypertarget{MyThread_8h_aae26f62d8f4b9821bd60d618252f7556}{\index{My\-Thread.\-h@{My\-Thread.\-h}!translate\-\_\-address@{translate\-\_\-address}}
+\index{translate\-\_\-address@{translate\-\_\-address}!MyThread.h@{My\-Thread.\-h}}
+\subsubsection[{translate\-\_\-address}]{\setlength{\rightskip}{0pt plus 5cm}{\bf address\-\_\-t} translate\-\_\-address (
+\begin{DoxyParamCaption}
+\item[{{\bf address\-\_\-t}}]{addr}
+\end{DoxyParamCaption}
+)}}\label{MyThread_8h_aae26f62d8f4b9821bd60d618252f7556}
+\hypertarget{MyThread_8h_af6169fa61eeb112118e7fe87087ca44f}{\index{My\-Thread.\-h@{My\-Thread.\-h}!translate\-\_\-address@{translate\-\_\-address}}
+\index{translate\-\_\-address@{translate\-\_\-address}!MyThread.h@{My\-Thread.\-h}}
+\subsubsection[{translate\-\_\-address}]{\setlength{\rightskip}{0pt plus 5cm}unsigned long int translate\-\_\-address (
+\begin{DoxyParamCaption}
+\item[{unsigned long int}]{addr}
+\end{DoxyParamCaption}
+)}}\label{MyThread_8h_af6169fa61eeb112118e7fe87087ca44f}
+\hypertarget{MyThread_8h_a58c8b2ad0ea491a6642e5e1cbd358c89}{\index{My\-Thread.\-h@{My\-Thread.\-h}!yield@{yield}}
+\index{yield@{yield}!MyThread.h@{My\-Thread.\-h}}
+\subsubsection[{yield}]{\setlength{\rightskip}{0pt plus 5cm}void yield (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)}}\label{MyThread_8h_a58c8b2ad0ea491a6642e5e1cbd358c89}
+
+
+The calling thread yields the C\-P\-U. 
+
+Calling thread passes control to another next thread. 
+
+\subsection{Variable Documentation}
+\hypertarget{MyThread_8h_adc5cb465644312947508c60ddd0c6a95}{\index{My\-Thread.\-h@{My\-Thread.\-h}!delete\-Queue@{delete\-Queue}}
+\index{delete\-Queue@{delete\-Queue}!MyThread.h@{My\-Thread.\-h}}
+\subsubsection[{delete\-Queue}]{\setlength{\rightskip}{0pt plus 5cm}list$<${\bf Thread\-\_\-node}$\ast$$>$ delete\-Queue}}\label{MyThread_8h_adc5cb465644312947508c60ddd0c6a95}
+\hypertarget{MyThread_8h_ab5367e3433fa2becb1aff26f411cb713}{\index{My\-Thread.\-h@{My\-Thread.\-h}!jbuf@{jbuf}}
+\index{jbuf@{jbuf}!MyThread.h@{My\-Thread.\-h}}
+\subsubsection[{jbuf}]{\setlength{\rightskip}{0pt plus 5cm}sigjmp\-\_\-buf jbuf\mbox{[}{\bf N}\mbox{]}}}\label{MyThread_8h_ab5367e3433fa2becb1aff26f411cb713}
+\hypertarget{MyThread_8h_a44906166d586465278e806ddc22f197b}{\index{My\-Thread.\-h@{My\-Thread.\-h}!last\-Created\-Thread\-I\-D@{last\-Created\-Thread\-I\-D}}
+\index{last\-Created\-Thread\-I\-D@{last\-Created\-Thread\-I\-D}!MyThread.h@{My\-Thread.\-h}}
+\subsubsection[{last\-Created\-Thread\-I\-D}]{\setlength{\rightskip}{0pt plus 5cm}int last\-Created\-Thread\-I\-D = -\/1}}\label{MyThread_8h_a44906166d586465278e806ddc22f197b}
+\hypertarget{MyThread_8h_a9b24cd4cb37f9ca342bd18ee1d09efca}{\index{My\-Thread.\-h@{My\-Thread.\-h}!master\-List@{master\-List}}
+\index{master\-List@{master\-List}!MyThread.h@{My\-Thread.\-h}}
+\subsubsection[{master\-List}]{\setlength{\rightskip}{0pt plus 5cm}list$<${\bf Thread\-\_\-node}$\ast$$>$ master\-List}}\label{MyThread_8h_a9b24cd4cb37f9ca342bd18ee1d09efca}
+\hypertarget{MyThread_8h_a743cf099a86b8a1e8a1405870d50ad47}{\index{My\-Thread.\-h@{My\-Thread.\-h}!new\-Queue@{new\-Queue}}
+\index{new\-Queue@{new\-Queue}!MyThread.h@{My\-Thread.\-h}}
+\subsubsection[{new\-Queue}]{\setlength{\rightskip}{0pt plus 5cm}list$<${\bf Thread\-\_\-node}$\ast$$>$ new\-Queue}}\label{MyThread_8h_a743cf099a86b8a1e8a1405870d50ad47}
+\hypertarget{MyThread_8h_a81c020b03ddbbc74a6e1b31154090c71}{\index{My\-Thread.\-h@{My\-Thread.\-h}!ready\-Queue@{ready\-Queue}}
+\index{ready\-Queue@{ready\-Queue}!MyThread.h@{My\-Thread.\-h}}
+\subsubsection[{ready\-Queue}]{\setlength{\rightskip}{0pt plus 5cm}list$<${\bf Thread\-\_\-node}$\ast$$>$ ready\-Queue}}\label{MyThread_8h_a81c020b03ddbbc74a6e1b31154090c71}
+\hypertarget{MyThread_8h_a3d535dfac63107d25af5b723e9924de5}{\index{My\-Thread.\-h@{My\-Thread.\-h}!running\-Thread@{running\-Thread}}
+\index{running\-Thread@{running\-Thread}!MyThread.h@{My\-Thread.\-h}}
+\subsubsection[{running\-Thread}]{\setlength{\rightskip}{0pt plus 5cm}{\bf Thread\-\_\-node}$\ast$ running\-Thread}}\label{MyThread_8h_a3d535dfac63107d25af5b723e9924de5}
+\hypertarget{MyThread_8h_a1c9850611f87e11698d2d1715d83c824}{\index{My\-Thread.\-h@{My\-Thread.\-h}!sleep\-Queue@{sleep\-Queue}}
+\index{sleep\-Queue@{sleep\-Queue}!MyThread.h@{My\-Thread.\-h}}
+\subsubsection[{sleep\-Queue}]{\setlength{\rightskip}{0pt plus 5cm}list$<${\bf Thread\-\_\-node}$\ast$$>$ sleep\-Queue}}\label{MyThread_8h_a1c9850611f87e11698d2d1715d83c824}
+\hypertarget{MyThread_8h_ab4fa96f35071a04c3f2fa530ff2026fb}{\index{My\-Thread.\-h@{My\-Thread.\-h}!suspend\-Queue@{suspend\-Queue}}
+\index{suspend\-Queue@{suspend\-Queue}!MyThread.h@{My\-Thread.\-h}}
+\subsubsection[{suspend\-Queue}]{\setlength{\rightskip}{0pt plus 5cm}list$<${\bf Thread\-\_\-node}$\ast$$>$ suspend\-Queue}}\label{MyThread_8h_ab4fa96f35071a04c3f2fa530ff2026fb}
+\hypertarget{MyThread_8h_aa831a34b70d46314329d5808a8da815d}{\index{My\-Thread.\-h@{My\-Thread.\-h}!terminate\-Queue@{terminate\-Queue}}
+\index{terminate\-Queue@{terminate\-Queue}!MyThread.h@{My\-Thread.\-h}}
+\subsubsection[{terminate\-Queue}]{\setlength{\rightskip}{0pt plus 5cm}list$<${\bf Thread\-\_\-node}$\ast$$>$ terminate\-Queue}}\label{MyThread_8h_aa831a34b70d46314329d5808a8da815d}
+\hypertarget{MyThread_8h_a44d86fb2dcf32b47b4c2ac9f6cd6ab00}{\index{My\-Thread.\-h@{My\-Thread.\-h}!waiting\-Queue@{waiting\-Queue}}
+\index{waiting\-Queue@{waiting\-Queue}!MyThread.h@{My\-Thread.\-h}}
+\subsubsection[{waiting\-Queue}]{\setlength{\rightskip}{0pt plus 5cm}list$<${\bf Thread\-\_\-node}$\ast$$>$ waiting\-Queue}}\label{MyThread_8h_a44d86fb2dcf32b47b4c2ac9f6cd6ab00}
