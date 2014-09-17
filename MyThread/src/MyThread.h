@@ -187,7 +187,7 @@ void switchThreads() {
 		//checkIfSleepDone(runningThread);
 		changeState(runningThread, RUNNING);
 		int runningThreadId = runningThread->stats->threadID;
-		cout << "switching now to " << runningThreadId << endl;
+		cout << "---switching now to " << runningThreadId << endl;
 		cout << "Ready Queue: ";
 		printQueue(&readyQueue);
 		siglongjmp(jbuf[runningThreadId], 1);
@@ -210,7 +210,7 @@ void setUp(char *stack, void(*f)(void)) {
 	sp = (address_t) stack + STACK_SIZE - sizeof(address_t);
 	pc = (address_t) (&protector);
 	sigsetjmp(jbuf[lastCreatedThreadID], 1);
-	cout << "inside setup";
+	cout << "inside setup" << lastCreatedThreadID << endl;
 	(jbuf[lastCreatedThreadID]->__jmpbuf)[JB_SP] = translate_address(sp);
 	(jbuf[lastCreatedThreadID]->__jmpbuf)[JB_PC] = translate_address(pc);
 	sigemptyset(&jbuf[lastCreatedThreadID]->__saved_mask); //empty saved signal mask
@@ -267,7 +267,7 @@ int createHelper(void(*fn)(void), void *(*fn_arg)(void *) = NULL,
 		cout << "Sorry, out of memory, no more thread can be created" << endl;
 		return -1;
 	}
-	if (lastCreatedThreadID == N) {
+	if (lastCreatedThreadID == N - 1) {
 		cout << "Reached max allowed limit of threads" << endl;
 		return -1;
 	}
@@ -287,6 +287,7 @@ int createHelper(void(*fn)(void), void *(*fn_arg)(void *) = NULL,
 
 void changeState(Thread_node* node, State state) {
 	struct timeval time;
+	//calculations for waiting time
 	if (node -> stats -> state == READY) {
 		//Previous state
 		gettimeofday(&time, NULL);
@@ -302,7 +303,8 @@ void changeState(Thread_node* node, State state) {
 		node->timers->ready_start = time;
 	}
 
-	if (node->stats-> state == RUNNING) {
+	//calculations for execution time
+	if (node->stats->state == RUNNING) {
 		//Previous State
 		gettimeofday(&time, NULL);
 		node->timers->exec_end = time;
@@ -314,7 +316,7 @@ void changeState(Thread_node* node, State state) {
 	} else if (state == RUNNING) {
 		//New State
 		gettimeofday(&time, NULL);
-		node-> timers->exec_start = time;
+		node->timers->exec_start = time;
 	}
 	node->stats->state = state;
 }
@@ -603,20 +605,18 @@ void sleep(int sec) {
 	uint64_t time = getCurrentTimeMillis();
 	runningThread->timers->sleepEndTime = time + sec * 1000;
 
+	cout << "thread going to sleep for " << sec << " seconds, id: "
+			<< runningThread->stats->threadID << endl;
 	bool firstTime = true;
 	while (runningThread->timers->sleepEndTime > time) {
 		if (!firstTime) {
-			runningThread->stats->numberOfBursts --;
-		}else {
+			runningThread->stats->numberOfBursts--;
+		} else {
 			firstTime = false;
 		}
 		moveThread(runningThread, RUNNING, SLEEPING);
 		time = getCurrentTimeMillis();
 	}
-	if(!firstTime){
-		runningThread->stats->numberOfBursts ++;
-	}
-
 }
 
 void *GetThreadResult(int threadID) {
