@@ -10,17 +10,19 @@
 #include <malloc.h>
 #include <unistd.h>
 using namespace std;
+
 //----------Constants---------
 #define JB_SP 6
 #define JB_PC 7
-#define TQ 2 //Time Quantum for round-robin scheduling
+#define TQ 30 //Time Quantum for round-robin scheduling
 #define STACK_SIZE 4096
 #define N 50 //Number of max threads allowed
 //----------Globals---------
-typedef enum {
-	NEW, READY, RUNNING, SLEEPING, SUSPENDED, DELETED, TERMINATED
-} State;
-typedef struct {
+enum State {
+	NEW, READY, RUNNING, SLEEPING, SUSPENDED, DELETED, TERMINATED, WAITING
+};
+
+struct Statistics {
 	int threadID;
 	State state;
 	int numberOfBursts;
@@ -28,16 +30,18 @@ typedef struct {
 	unsigned long totalRequestedSleepingTime;
 	unsigned int averageExecutionTimeQuantum;
 	unsigned long averageWaitingTime;
-} Statistics;
-typedef struct {
+};
+
+struct Timers {
 	struct timeval exec_start;
 	struct timeval exec_end;
 	struct timeval ready_start;
 	struct timeval ready_end;
 	unsigned int waitingCount;
 	unsigned long totalWaitingTime;
-} Timers;
-typedef struct {
+};
+
+struct Thread_node {
 	Statistics* stats;
 	Timers* timers;
 	void (*fn)(void);
@@ -45,10 +49,12 @@ typedef struct {
 	void *arg; //used in case of createWithArgs
 	void *fn_arg_result; //used in case of createWithArgs
 	char* stack;
-} Thread_node;
+	list<Thread_node*> threadsWaitingForMe;
+};
+
 sigjmp_buf jbuf[N];
 list<Thread_node*> newQueue, readyQueue, suspendQueue, deleteQueue, sleepQueue,
-		masterList, terminateQueue;
+		masterList, terminateQueue, waitingQueue;
 int lastCreatedThreadID = -1; //global variable to maintain the threadIds
 //char master_stack[N][STACK_SIZE];
 typedef unsigned long address_t; //64bit address
@@ -69,6 +75,8 @@ void protector(void);
 int createHelper(void(*fn)(void), void *(*fn_arg)(void *), void *arg);
 void changeState(Thread_node* node, State state);
 uint64_t getTimeDiff(timeval start, timeval end);
+Timers* getTimers(int threadID);
+void resumeWaitingThreads(Thread_node *t_node);
 void moveThread(Thread_node *t_node, State fromState, State toState);
 
 //----------Thread Functions---------
@@ -202,9 +210,6 @@ void protector(void) {
 		runningThread -> fn_arg_result = (fn_arg)(arg);
 	}
 
-	cout << "Inside protector: terminated with id: "
-			<< runningThread->stats->threadID << endl;
-
 	moveThread(runningThread, RUNNING, TERMINATED);
 }
 
@@ -283,32 +288,61 @@ Timers* getTimers(int threadID) {
 	return t_node->timers;
 }
 
+void resumeWaitingThreads(Thread_node *t_node) {
+	while (!(t_node->threadsWaitingForMe).empty()) {
+		Thread_node* waitingThread = deque(&(t_node->threadsWaitingForMe));
+		if (waitingThread->stats->state == WAITING) {
+			//Using "if" check considering the scenario if waiting thread is deleted already
+			moveThread(waitingThread, WAITING, READY);
+		}
+	}
+}
+
 void moveThread(Thread_node *t_node, State fromState, State toState) {
+	int threadId = t_node->stats->threadID;
 	switch (toState) {
 	case RUNNING:
-		cout << "This method does not support making toState as RUNNING";
+		cout << "Inside moveThread: toState as RUNNING not supported";
+		return;
+	case NEW:
+		cout << "Inside moveThread: toState as NEW not supported";
 		return;
 	case READY:
 		enque(&readyQueue, t_node);
 		changeState(t_node, READY);
 		break;
 	case SUSPENDED:
+		cout << "Suspended thread: " << threadId << endl;
 		changeState(t_node, SUSPENDED);
 		enque(&suspendQueue, t_node);
 		break;
+	case WAITING:
+		changeState(t_node, WAITING);
+		enque(&waitingQueue, t_node);
+		break;
 	case DELETED:
+		cout << "Deleted thread: " << threadId << endl;
 		changeState(t_node, DELETED);
 		enque(&deleteQueue, t_node);
+		resumeWaitingThreads(t_node);
 		break;
 	case TERMINATED:
-			changeState(t_node, TERMINATED);
-			enque(&terminateQueue, t_node);
-			break;
+		cout << "Terminated thread: " << threadId << endl;
+		changeState(t_node, TERMINATED);
+		enque(&terminateQueue, t_node);
+		resumeWaitingThreads(t_node);
+		break;
 	}
 
 	switch (fromState) {
+	case DELETED:
+		cout << "Inside moveThread: fromState as DELETED not supported";
+		break;
+	case TERMINATED:
+		cout << "Inside moveThread: fromState as TERMINATED not supported";
+		break;
 	case RUNNING:
-		yield(); //Need to yield the thread if the fromStatus is RUNNING
+		yield(); //Need to yield the thread if fromStatus is RUNNING
 		break;
 	case READY:
 		readyQueue.remove(t_node);
@@ -318,6 +352,9 @@ void moveThread(Thread_node *t_node, State fromState, State toState) {
 		break;
 	case NEW:
 		newQueue.remove(t_node);
+		break;
+	case WAITING:
+		waitingQueue.remove(t_node);
 		break;
 	}
 }
@@ -393,12 +430,14 @@ void suspend(int threadID) {
 
 	if (runningThread != NULL && runningThread->stats->threadID == threadID) {
 		moveThread(runningThread, RUNNING, SUSPENDED);
+		return;
 	}
 
 	// Comes here only if not a running Thread, else should have dispatched
 	Thread_node* t_node = searchInQueue(threadID, &readyQueue);
 	if (t_node == NULL) {
 		cout << "Inside suspend : thread not found" << endl;
+		return;
 	}
 
 	moveThread(t_node, READY, SUSPENDED);
@@ -445,6 +484,9 @@ void deleteThread(int threadID) {
 	case SUSPENDED:
 		moveThread(t_node, SUSPENDED, DELETED);
 		break;
+	case WAITING:
+		moveThread(t_node, WAITING, DELETED);
+		break;
 	}
 }
 
@@ -471,15 +513,16 @@ void *GetThreadResult(int threadID) {
 		return NULL;
 	}
 
-	while (t_node->stats->state != TERMINATED) {
-		//Using Delete check here to cover the scenario - if thread deleted before terminating
-		if (t_node->stats->state == DELETED) {
-			cout << "Inside GetThreadResult: thread deleted" << endl;
-			return NULL;
-		}
-
-		moveThread(runningThread, RUNNING, READY); //Moving currentThread to Ready queue until t_node is terminated
+	if (t_node->stats->state == DELETED) {
+		cout << "Inside GetThreadResult: thread deleted" << endl;
+		return NULL;
 	}
+
+	if (t_node->stats->state != TERMINATED) {
+		(t_node->threadsWaitingForMe).push_back(runningThread);
+		moveThread(runningThread, RUNNING, WAITING);
+	}
+
 	return t_node->fn_arg_result;
 }
 
@@ -494,14 +537,14 @@ void JOIN(int threadID) {
 		return;
 	}
 
-	while (t_node->stats->state != TERMINATED) {
-		//Using Delete check here to cover the scenario - if thread deleted before terminating
-		if (t_node->stats->state == DELETED) {
-			cout << "Inside GetThreadResult: thread deleted" << endl;
-			return;
-		}
+	if (t_node->stats->state == DELETED) {
+		cout << "Inside GetThreadResult: thread deleted" << endl;
+		return;
+	}
 
-		moveThread(runningThread, RUNNING, READY); //Moving currentThread to Ready queue until t_node is terminated
+	if (t_node->stats->state != TERMINATED) {
+		(t_node->threadsWaitingForMe).push_back(runningThread);
+		moveThread(runningThread, RUNNING, WAITING);
 	}
 }
 

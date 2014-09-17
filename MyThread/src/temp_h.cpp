@@ -7,6 +7,7 @@ using namespace std;
 void f() {
 	while (1) {
 		cout << "f" << endl;
+		JOIN(2);
 		usleep(SECOND);
 	}
 }
@@ -14,7 +15,8 @@ void f() {
 void g() {
 	while (1) {
 		cout << "mein g hun" << endl;
-		JOIN(2);
+		int* p = (int *) GetThreadResult(2);
+		cout << "inside g, printing the result: " << *p << endl;
 		cout << "reached here in g" << endl;
 		usleep(SECOND);
 	}
@@ -22,8 +24,9 @@ void g() {
 
 void* k(void* a) {
 	//while (1) {
-		cout << "K" << endl;
-		usleep(SECOND);
+	cout << "K" << endl;
+	usleep(SECOND);
+	return a;
 	//}
 }
 
