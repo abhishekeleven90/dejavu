@@ -462,31 +462,31 @@ uint64_t getCurrentTimeMillis() {
 //----------Thread Functions---------
 
 /**
-* @brief Creates a no-return-type and no-arg thread.
-* Creates a thread, whose execution starts from
-* function f which has no parameter and no return type; however create returns
-* thread ID of created thread.
-*/
+ * @brief Creates a no-return-type and no-arg thread.
+ * Creates a thread, whose execution starts from
+ * function f which has no parameter and no return type; however create returns
+ * thread ID of created thread.
+ */
 int create(void(*f)(void)) {
 	return createHelper(f);
 }
 
 /**
-* @brief Creates a return-type and arg thread.
-* f is a ptr to a function which
-* takes (void *) and returns (void *). Unlike the threads so far, this thread takes
-* arguments, and instead of uselessly looping forever, returns a value in a (void *).
-* This function returns the id of the thread created.
-*/
+ * @brief Creates a return-type and arg thread.
+ * f is a ptr to a function which
+ * takes (void *) and returns (void *). Unlike the threads so far, this thread takes
+ * arguments, and instead of uselessly looping forever, returns a value in a (void *).
+ * This function returns the id of the thread created.
+ */
 int createWithArgs(void *(*f)(void *), void *arg) {
 	return createHelper(NULL, f, arg);
 }
 
 /**
-* @brief A scheduler for our thread library.
-* dispatch() is called after every time quantum finishes.
-* We are simulating a round robin scheduler.
-*/
+ * @brief A scheduler for our thread library.
+ * dispatch() is called after every time quantum finishes.
+ * We are simulating a round robin scheduler.
+ */
 void dispatch(int sig) {
 	signal(SIGALRM, dispatch);
 	alarm(TQ);
@@ -494,11 +494,11 @@ void dispatch(int sig) {
 }
 
 /**
-* @brief Starts the thread environment.
-* Call in your main method. Moves all the created threads to ready queue & runs the first one.
-* One called,starts running of thread and never return.
-* So at least one of your thread should have infinite loop.
-*/
+ * @brief Starts the thread environment.
+ * Call in your main method. Moves all the created threads to ready queue & runs the first one.
+ * One called,starts running of thread and never return.
+ * So at least one of your thread should have infinite loop.
+ */
 void start() {
 	if (newQueue.empty()) {
 		cout << "Inside start: newQueue empty, please create some threads"
@@ -515,10 +515,10 @@ void start() {
 }
 
 /**
-* @brief Submits particular thread to scheduler for execution.
-* Puts a thread to ready queue from new queue.
-* Could be called from any other thread.
-*/
+ * @brief Submits particular thread to scheduler for execution.
+ * Puts a thread to ready queue from new queue.
+ * Could be called from any other thread.
+ */
 void run(int threadID) {
 	if (!isValidThreadID(threadID)) {
 		return;
@@ -535,10 +535,10 @@ void run(int threadID) {
 }
 
 /**
-* @brief Returns it's own thread ID to the running thread.
-* Called from inside the thread.
-* Should return thread ID of the current thread.
-*/
+ * @brief Returns it's own thread ID to the running thread.
+ * Called from inside the thread.
+ * Should return thread ID of the current thread.
+ */
 int getID() {
 	if (runningThread != NULL) {
 		return runningThread->stats->threadID;
@@ -548,11 +548,11 @@ int getID() {
 }
 
 /**
-* @brief Returns thread Statistics with id as threadID 
-* Could be called from any thread.
-* Returns the status of threaded by returning pointer to its statistics
-* Returns NULL of threadID is invalid.
-*/
+ * @brief Returns thread Statistics with id as threadID
+ * Could be called from any thread.
+ * Returns the status of threaded by returning pointer to its statistics
+ * Returns NULL of threadID is invalid.
+ */
 Statistics* getStatus(int threadID) {
 	if (!isValidThreadID(threadID)) {
 		return NULL;
@@ -568,13 +568,12 @@ Statistics* getStatus(int threadID) {
 
 }
 
-
 /**
-* @brief Suspends the thread.
-* Could be called from any thread.
-* Puts the thread in suspended queue.
-* Suspends the thread with ID as threadID until a resume() is not called for the same thread.
-*/
+ * @brief Suspends the thread.
+ * Could be called from any thread.
+ * Puts the thread in suspended queue.
+ * Suspends the thread with ID as threadID until a resume() is not called for the same thread.
+ */
 void suspend(int threadID) {
 	if (!isValidThreadID(threadID)) {
 		return;
@@ -596,10 +595,10 @@ void suspend(int threadID) {
 }
 
 /**
-* @brief Resumes a suspended thread.
-* Could be called from any other thread.
-* Puts the thread back to ready queue from suspended queue.
-*/
+ * @brief Resumes a suspended thread.
+ * Could be called from any other thread.
+ * Puts the thread back to ready queue from suspended queue.
+ */
 void resume(int threadID) {
 	if (!isValidThreadID(threadID)) {
 		return;
@@ -615,10 +614,10 @@ void resume(int threadID) {
 }
 
 /**
-* @brief Deletes a particular thread.
-* Could be called from any other thread.
-* Deleted thread object lives, but it will lose all executing capability.
-*/
+ * @brief Deletes a particular thread.
+ * Could be called from any other thread.
+ * Deleted thread object lives, but it will lose all executing capability.
+ */
 void deleteThread(int threadID) {
 	if (!isValidThreadID(threadID)) {
 		return;
@@ -659,10 +658,10 @@ void deleteThread(int threadID) {
 }
 
 /**
-* @brief Sleeps the calling thread for sec seconds.
-* Sleep is not a blocking call.
-* Puts the thread into sleeping state, and on completion puts back to ready queue.
-*/
+ * @brief Sleeps the calling thread for sec seconds.
+ * Sleep is not a blocking call.
+ * Puts the thread into sleeping state, and on completion puts back to ready queue.
+ */
 void sleep(int sec) {
 	alarm(0);
 	//Adding the total requested sleeping time
@@ -686,11 +685,11 @@ void sleep(int sec) {
 }
 
 /**
-* @brief Calling thread waits till thread with ID threadID returns.
-* Waits till a thread created with the above function returns, 
-* and returns the return value of that thread. This
-* function, obviously, waits until that thread is done with.
-*/
+ * @brief Calling thread waits till thread with ID threadID returns.
+ * Waits till a thread created with the above function returns,
+ * and returns the return value of that thread. This
+ * function, obviously, waits until that thread is done with.
+ */
 void *GetThreadResult(int threadID) {
 	if (!isValidThreadID(threadID)) {
 		return NULL;
@@ -728,10 +727,10 @@ void *GetThreadResult(int threadID) {
 }
 
 /**
-* @brief Calling thread waits till thread with ID threadID completes.
-* Waits till a thread created with the above function completes, 
-* This function, obviously, waits until that thread is done with.
-*/
+ * @brief Calling thread waits till thread with ID threadID completes.
+ * Waits till a thread created with the above function completes,
+ * This function, obviously, waits until that thread is done with.
+ */
 void JOIN(int threadID) {
 	if (!isValidThreadID(threadID)) {
 		return;
@@ -761,8 +760,8 @@ void JOIN(int threadID) {
 }
 
 /** @brief cleans up everything.
-* Stops scheduler, frees all the space allocated, print statistics per thread.
-*/
+ * Stops scheduler, frees all the space allocated, print statistics per thread.
+ */
 void clean() {
 	alarm(0);
 	//changing the state of runningThread to have proper stats
@@ -787,8 +786,8 @@ void clean() {
 }
 
 /** @brief The calling thread yields the CPU.
-* Calling thread passes control to another next thread.
-*/
+ * Calling thread passes control to another next thread.
+ */
 void yield() {
 	alarm(0);
 	dispatch(14);
