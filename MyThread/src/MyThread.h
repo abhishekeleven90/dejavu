@@ -11,10 +11,41 @@
 #include <unistd.h>
 using namespace std;
 
-//----------Constants---------
+#ifdef __x86_64__
+// code for 64 bit Intel arch
+
+typedef unsigned long address_t;
 #define JB_SP 6
 #define JB_PC 7
-#define TQ 30 //Time Quantum for round-robin scheduling
+address_t translate_address(address_t addr) {
+	address_t ret;
+	asm volatile("xor    %%fs:0x30,%0\n"
+			"rol    $0x11,%0\n"
+			: "=g" (ret)
+			: "0" (addr));
+	return ret;
+}
+
+#else
+// code for 32 bit Intel arch
+
+typedef unsigned int address_t;
+#define JB_SP 4
+#define JB_PC 5
+address_t translate_address(address_t addr)
+{
+	address_t ret;
+	asm volatile("xor    %%gs:0x18,%0\n"
+			"rol    $0x9,%0\n"
+			: "=g" (ret)
+			: "0" (addr));
+	return ret;
+}
+
+#endif
+
+//----------Constants---------
+#define TQ 2 //Time Quantum for round-robin scheduling
 #define STACK_SIZE 4096
 #define N 50 //Number of max threads allowed
 //----------Globals---------
@@ -39,6 +70,7 @@ struct Timers {
 	struct timeval ready_end;
 	unsigned int waitingCount;
 	unsigned long totalWaitingTime;
+	unsigned long sleepEndTime;
 };
 
 struct Thread_node {
@@ -57,7 +89,6 @@ list<Thread_node*> newQueue, readyQueue, suspendQueue, deleteQueue, sleepQueue,
 		masterList, terminateQueue, waitingQueue;
 int lastCreatedThreadID = -1; //global variable to maintain the threadIds
 //char master_stack[N][STACK_SIZE];
-typedef unsigned long address_t; //64bit address
 Thread_node* runningThread;
 
 //***************************FUNCTION DECLARATIONS*********************************
@@ -66,6 +97,7 @@ void enque(list<Thread_node*> *l, Thread_node* node);
 Thread_node* deque(list<Thread_node*> *l);
 void initializeThread(Thread_node* t_node);
 void switchThreads();
+void checkIfSleepDone(Thread_node* t_node);
 unsigned long int translate_address(unsigned long int addr);
 void setUp(char *stack, void(*f)(void));
 Thread_node* searchInQueue(int threadId, list<Thread_node*> *l);
@@ -74,10 +106,15 @@ bool isValidThreadID(int threadId);
 void protector(void);
 int createHelper(void(*fn)(void), void *(*fn_arg)(void *), void *arg);
 void changeState(Thread_node* node, State state);
+uint64_t convertToMillis(timeval time);
 uint64_t getTimeDiff(timeval start, timeval end);
 Timers* getTimers(int threadID);
 void resumeWaitingThreads(Thread_node *t_node);
 void moveThread(Thread_node *t_node, State fromState, State toState);
+void emptyQueue(list<Thread_node*> *queue);
+void printStats(Thread_node* t_node);
+void printTime(unsigned long sec);
+uint64_t getCurrentTimeMillis();
 
 //----------Thread Functions---------
 int create(void(*f)(void));
@@ -101,11 +138,13 @@ void *GetThreadResult(int threadID);
 void enque(list<Thread_node*> *l, Thread_node* node) {
 	(*l).push_back(node);
 }
+
 Thread_node* deque(list<Thread_node*> *l) {
 	Thread_node* node = (*l).front();
 	(*l).pop_front();
 	return node;
 }
+
 void initializeThread(Thread_node* t_node) {
 	lastCreatedThreadID++;
 	Statistics* stats = new Statistics;
@@ -124,6 +163,7 @@ void initializeThread(Thread_node* t_node) {
 	enque(&newQueue, t_node); //Adding to the new queue
 	enque(&masterList, t_node); //Adding to the master list
 }
+
 void switchThreads() {
 	if (runningThread != NULL) {
 		if (runningThread->stats->state == RUNNING) {
@@ -144,6 +184,7 @@ void switchThreads() {
 	//Moving readyHead to running state
 	if (!readyQueue.empty()) {
 		runningThread = deque(&readyQueue);
+		//checkIfSleepDone(runningThread);
 		changeState(runningThread, RUNNING);
 		int runningThreadId = runningThread->stats->threadID;
 		cout << "switching now to " << runningThreadId << endl;
@@ -155,13 +196,15 @@ void switchThreads() {
 	}
 }
 
-unsigned long int translate_address(unsigned long int addr) {
-	unsigned long int retAddr;
-	asm volatile("movq %%fs:0x30,%0\n" : "=r" (retAddr));
-	retAddr = retAddr ^ addr;
-	retAddr = (retAddr << 17) | (retAddr >> (64 - 17));
-	return retAddr;
+void checkIfSleepDone(Thread_node* t_node) {
+	if (t_node->stats->state == SLEEPING) {
+		uint64_t currentTimeMillis = getCurrentTimeMillis();
+		if (t_node->timers->sleepEndTime > currentTimeMillis) {
+			moveThread(runningThread, RUNNING, SLEEPING);
+		}
+	}
 }
+
 void setUp(char *stack, void(*f)(void)) {
 	unsigned int sp, pc;
 	sp = (address_t) stack + STACK_SIZE - sizeof(address_t);
@@ -172,6 +215,7 @@ void setUp(char *stack, void(*f)(void)) {
 	(jbuf[lastCreatedThreadID]->__jmpbuf)[JB_PC] = translate_address(pc);
 	sigemptyset(&jbuf[lastCreatedThreadID]->__saved_mask); //empty saved signal mask
 }
+
 Thread_node* searchInQueue(int threadId, list<Thread_node*> *l) {
 	for (list<Thread_node*>::iterator it = (*l).begin(); it != (*l).end(); it++) {
 		if ((*it)->stats->threadID == threadId) {
@@ -180,12 +224,14 @@ Thread_node* searchInQueue(int threadId, list<Thread_node*> *l) {
 	}
 	return NULL;
 }
+
 void printQueue(list<Thread_node*> *l) {
 	for (list<Thread_node*>::iterator it = (*l).begin(); it != (*l).end(); it++) {
 		cout << (*it)->stats->threadID << ", ";
 	}
 	cout << endl;
 }
+
 bool isValidThreadID(int threadId) {
 	if (threadId > lastCreatedThreadID) {
 		cout << "Inside ifValidThreadID : Invalid threadId" << endl;
@@ -193,6 +239,7 @@ bool isValidThreadID(int threadId) {
 	}
 	return true;
 }
+
 void protector(void) {
 	void (*fn)(void);
 	void *(*fn_arg)(void*);
@@ -241,6 +288,7 @@ int createHelper(void(*fn)(void), void *(*fn_arg)(void *) = NULL,
 void changeState(Thread_node* node, State state) {
 	struct timeval time;
 	if (node -> stats -> state == READY) {
+		//Previous state
 		gettimeofday(&time, NULL);
 		node->timers->ready_end = time;
 		node->timers->totalWaitingTime += getTimeDiff(
@@ -249,10 +297,13 @@ void changeState(Thread_node* node, State state) {
 		node->stats->averageWaitingTime = node->timers->totalWaitingTime
 				/ node->timers->waitingCount;
 	} else if (state == READY) {
+		//New State
 		gettimeofday(&time, NULL);
 		node->timers->ready_start = time;
 	}
+
 	if (node->stats-> state == RUNNING) {
+		//Previous State
 		gettimeofday(&time, NULL);
 		node->timers->exec_end = time;
 		node->stats->totalExecutionTime += getTimeDiff(
@@ -261,6 +312,7 @@ void changeState(Thread_node* node, State state) {
 		node->stats->averageExecutionTimeQuantum
 				= node->stats->totalExecutionTime / node->stats->numberOfBursts;
 	} else if (state == RUNNING) {
+		//New State
 		gettimeofday(&time, NULL);
 		node-> timers->exec_start = time;
 	}
@@ -268,10 +320,13 @@ void changeState(Thread_node* node, State state) {
 }
 
 uint64_t getTimeDiff(timeval start, timeval end) {
-	uint64_t endmillis = (end.tv_sec * (uint64_t) 1000) + (end.tv_usec / 1000);
-	uint64_t startmillis = (start.tv_sec * (uint64_t) 1000) + (start.tv_usec
-			/ 1000);
+	uint64_t endmillis = convertToMillis(end);
+	uint64_t startmillis = convertToMillis(start);
 	return endmillis - startmillis;
+}
+
+uint64_t convertToMillis(timeval time) {
+	return (time.tv_sec * (uint64_t) 1000) + (time.tv_usec / 1000);
 }
 
 Timers* getTimers(int threadID) {
@@ -311,6 +366,10 @@ void moveThread(Thread_node *t_node, State fromState, State toState) {
 		enque(&readyQueue, t_node);
 		changeState(t_node, READY);
 		break;
+	case SLEEPING: //sleeping moves it again to readyqueue
+		enque(&readyQueue, t_node);
+		changeState(t_node, SLEEPING);
+		break;
 	case SUSPENDED:
 		cout << "Suspended thread: " << threadId << endl;
 		changeState(t_node, SUSPENDED);
@@ -339,12 +398,15 @@ void moveThread(Thread_node *t_node, State fromState, State toState) {
 		cout << "Inside moveThread: fromState as DELETED not supported";
 		break;
 	case TERMINATED:
-		cout << "Inside moveThread: fromState as TERMINATED not supported";
+		terminateQueue.remove(t_node);
 		break;
 	case RUNNING:
 		yield(); //Need to yield the thread if fromStatus is RUNNING
 		break;
 	case READY:
+		readyQueue.remove(t_node);
+		break;
+	case SLEEPING: //sleeping removes from ready queue
 		readyQueue.remove(t_node);
 		break;
 	case SUSPENDED:
@@ -357,6 +419,42 @@ void moveThread(Thread_node *t_node, State fromState, State toState) {
 		waitingQueue.remove(t_node);
 		break;
 	}
+}
+
+void emptyQueue(list<Thread_node*> *queue) {
+	while (!(*queue).empty()) {
+		deque(queue);
+	}
+}
+
+void printStats(Thread_node* t_node) {
+	Statistics* stats = getStatus(t_node->stats->threadID);
+	cout << "---------------" << endl << endl;
+	cout << "ThreadId: " << stats->threadID << endl;
+	cout << "Current State: " << stats->state << endl;
+	cout << "Number of bursts: " << stats->numberOfBursts << endl;
+	cout << "Total Execution Time: ";
+	printTime(stats->totalExecutionTime);
+	cout << "Average Execution Time: ";
+	printTime(stats->averageExecutionTimeQuantum);
+	cout << "Average Waiting Time: ";
+	printTime(stats->averageWaitingTime);
+	cout << "Total Requested Sleeping Time: ";
+	printTime(stats->totalRequestedSleepingTime);
+}
+
+void printTime(unsigned long sec) {
+	if (sec == 0) {
+		cout << "N/A" << endl;
+	} else {
+		cout << sec << " msec" << endl;
+	}
+}
+
+uint64_t getCurrentTimeMillis() {
+	struct timeval currentTime;
+	gettimeofday(&currentTime, NULL);
+	return convertToMillis(currentTime);
 }
 
 //----------Thread Functions---------
@@ -375,7 +473,8 @@ void dispatch(int sig) {
 /***Moves all the created threads to ready queue & runs the first one***/
 void start() {
 	if (newQueue.empty()) {
-		cout << "Inside start: newQueue empty, please create some threads";
+		cout << "Inside start: newQueue empty, please create some threads"
+				<< endl;
 		return;
 	}
 
@@ -475,6 +574,9 @@ void deleteThread(int threadID) {
 	case READY:
 		moveThread(t_node, READY, DELETED);
 		break;
+	case SLEEPING:
+		moveThread(t_node, SLEEPING, DELETED);
+		break;
 	case RUNNING:
 		moveThread(t_node, RUNNING, DELETED);
 		break;
@@ -487,7 +589,34 @@ void deleteThread(int threadID) {
 	case WAITING:
 		moveThread(t_node, WAITING, DELETED);
 		break;
+	case TERMINATED:
+		moveThread(t_node, TERMINATED, DELETED);
+		break;
 	}
+}
+
+void sleep(int sec) {
+	alarm(0);
+	//Adding the total requested sleeping time
+	runningThread->stats->totalRequestedSleepingTime += sec * 1000;
+
+	uint64_t time = getCurrentTimeMillis();
+	runningThread->timers->sleepEndTime = time + sec * 1000;
+
+	bool firstTime = true;
+	while (runningThread->timers->sleepEndTime > time) {
+		if (!firstTime) {
+			runningThread->stats->numberOfBursts --;
+		}else {
+			firstTime = false;
+		}
+		moveThread(runningThread, RUNNING, SLEEPING);
+		time = getCurrentTimeMillis();
+	}
+	if(!firstTime){
+		runningThread->stats->numberOfBursts ++;
+	}
+
 }
 
 void *GetThreadResult(int threadID) {
@@ -537,14 +666,43 @@ void JOIN(int threadID) {
 		return;
 	}
 
+	if (t_node->stats->state == RUNNING) {
+		cout << "Inside JOIN: Well this is embarrassing, how can I join Myself"
+				<< endl;
+		return;
+	}
+
 	if (t_node->stats->state == DELETED) {
-		cout << "Inside GetThreadResult: thread deleted" << endl;
+		cout << "Inside JOIN: thread deleted" << endl;
 		return;
 	}
 
 	if (t_node->stats->state != TERMINATED) {
 		(t_node->threadsWaitingForMe).push_back(runningThread);
 		moveThread(runningThread, RUNNING, WAITING);
+	}
+}
+
+void clean() {
+	alarm(0);
+	//changing the state of runningThread to have proper stats
+	if (runningThread != NULL) {
+		changeState(runningThread, READY);
+	}
+
+	//all queues empty
+	emptyQueue(&newQueue);
+	emptyQueue(&readyQueue);
+	emptyQueue(&suspendQueue);
+	emptyQueue(&deleteQueue);
+	emptyQueue(&sleepQueue);
+	emptyQueue(&terminateQueue);
+	emptyQueue(&waitingQueue);
+
+	while (!masterList.empty()) {
+		Thread_node* t_node = masterList.front();
+		printStats(t_node);
+		free(deque(&masterList));
 	}
 }
 
