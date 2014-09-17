@@ -22,6 +22,7 @@ void* k(void* a) {
 	while (1) {
 		cout << "K" << endl;
 		usleep(SECOND);
+		clean();
 	}
 }
 
