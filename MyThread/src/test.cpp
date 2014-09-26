@@ -3,6 +3,7 @@
 #define SECOND 1000000
 
 using namespace std;
+/*
 
 void f() {
 	while (1) {
@@ -36,3 +37,4 @@ int main() {
 	start();
 	return 0;
 }
+*/

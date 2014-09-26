@@ -26,6 +26,7 @@ void* k(void* a) {
 	}
 }
 
+/*
 int main() {
 	create(f);
 	create(g);
@@ -37,3 +38,4 @@ int main() {
 	start();
 	return 0;
 }
+*/
