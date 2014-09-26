@@ -1,4 +1,4 @@
-#include "MyThread.h"
+//#include "MyThread.h"
 #include <iostream>
 #define SECOND 1000000
 
