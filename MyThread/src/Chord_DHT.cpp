@@ -30,14 +30,20 @@ struct Node {
 
 //****************Function Declarations*******************
 //-------Helper Functions----------
+void tab(int count);
+void helperHelpNewCmd();
+void helperHelp();
 bool startsWith(const char *a, const char *b);
-unsigned int fetchPortNumber();
-char* substring(char *string, int position, int length);
+char* fetchAddress(char* cmd, int pos);
+bool isValidAddress(char* addr);
+unsigned int fetchPortNumber(char* string, int pos);
 bool isValidPort(unsigned int port);
+int indexOf(char* string, char of);
+char* substring(char *string, int position, int length);
 void helperPort();
 void helperCreate(bool created, bool & joined);
 void helperJoin(bool joined);
-void helperHelp();
+bool isValidJoinCmd();
 
 //-----TCP Functions-------
 void UI();
@@ -48,6 +54,99 @@ void client();
 
 //****************Function Definitions*******************
 //-------Helper Functions----------
+void tab(int count) {
+	for (int i = 0; i < count; i++) {
+		cout << "\t";
+	}
+}
+
+void helperHelpNewCmd() {
+	cout << endl;
+	tab(1);
+}
+
+void helperHelp() {
+	cout << "Commands supported: " << endl;
+
+	helperHelpNewCmd();
+	cout << "help";
+	tab(4);
+	cout << "==> Provides a list of command and their usage details";
+
+	helperHelpNewCmd();
+	cout << "port <x>";
+	tab(3);
+	cout << "==> sets the port number";
+	cout << " (eg- port 1234)";
+
+	helperHelpNewCmd();
+	cout << "create";
+	tab(4);
+	cout << "==> creates a ring";
+
+	helperHelpNewCmd();
+	cout << "join <x>";
+	tab(3);
+	cout << "==> joins the ring with x address";
+	cout << " (eg- join 111.111.111.111:1000)";
+
+	helperHelpNewCmd();
+	cout << "quit";
+	tab(4);
+	cout << "==> shuts down the ring";
+
+	helperHelpNewCmd();
+	cout << "put <key> <value>";
+	tab(2);
+	cout << "==> inserts the given <key,value> pair in the ring ";
+	cout << " (eg- put 23 654)";
+
+	helperHelpNewCmd();
+	cout << "get <key>";
+	tab(3);
+	cout << "==> returns the value corresponding to the key";
+	cout << " (eg- get 23)";
+
+	cout << endl;
+
+	//Bonus Commands
+	helperHelpNewCmd();
+	cout << "-Yes!!! we have implemented BONUS COMMANDS, mentioned them below-";
+
+	helperHelpNewCmd();
+	cout << "finger";
+	tab(4);
+	cout << "==> prints the list of addresses of nodes on the ring";
+
+	helperHelpNewCmd();
+	cout << "successor";
+	tab(3);
+	cout << "==> prints the address of the next node on the ring";
+
+	helperHelpNewCmd();
+	cout << "predecessor";
+	tab(3);
+	cout << "==> prints the address of the previous node on the ring";
+
+	helperHelpNewCmd();
+	cout << "dump";
+	tab(4);
+	cout << "==> displays all information pertaining to calling node";
+
+	helperHelpNewCmd();
+	cout << "dumpaddr <address>";
+	tab(2);
+	cout << "==> displays all information pertaining to node at address";
+	cout << " (eg - dump 111.111.111.111:1000)";
+
+	helperHelpNewCmd();
+	cout << "dumpall";
+	tab(4);
+	cout << "==> displays all information of all the nodes";
+
+	cout << endl;
+}
+
 bool startsWith(const char *a, const char *b) {
 	if (strncmp(a, b, strlen(b)) == 0) {
 		return 0;
@@ -55,8 +154,36 @@ bool startsWith(const char *a, const char *b) {
 	return 1;
 }
 
-unsigned int fetchPortNumber() {
-	char *portNumber = substring(ui_data, 6, strlen(ui_data) - 5);
+char* fetchAddress(char* cmd, int pos) {
+	char* addr = substring(cmd, pos, strlen(cmd) - pos);
+	if (!isValidAddress(addr)) {
+		cout << "fetchAddress: Address not valid" << endl;
+		return NULL;
+	}
+	return addr;
+}
+
+bool isValidAddress(char* addr) {
+	int len = strlen(addr);
+	int dotCount = 0;
+	int colonCount = 0;
+
+	for (int i = 0; i < len; i++) {
+		if (addr[i] == ':') {
+			colonCount++;
+		} else if (addr[i] == '.') {
+			dotCount++;
+		}
+	}
+
+	if (colonCount == 1 && dotCount == 3) {
+		return true;
+	}
+	return false;
+}
+
+unsigned int fetchPortNumber(char* string, int pos) {
+	char *portNumber = substring(string, pos, strlen(string) - pos + 1);
 	unsigned int port = atoi(portNumber);
 	if (isValidPort(port)) {
 		return port;
@@ -66,10 +193,20 @@ unsigned int fetchPortNumber() {
 
 bool isValidPort(unsigned int port) {
 	if (port == 0 || port > 65535) {
-		cout << "port invalid or reserved - port Number did not set" << endl;
+		cout << "isValidPort: port invalid or reserved" << endl;
 		return false;
 	}
 	return true;
+}
+
+int indexOf(char* string, char of) {
+	int len = strlen(string);
+	for (int i = 0; i < len; i++) {
+		if (string[i] == of) {
+			return i;
+		}
+	}
+	return len-1;
 }
 
 char* substring(char *string, int position, int length) {
@@ -96,14 +233,16 @@ char* substring(char *string, int position, int length) {
 	return pointer;
 }
 
-void helperPort() {
-	server_port = fetchPortNumber();
+void helperPort(char* portCmd) {
+	server_port = fetchPortNumber(portCmd, 6);
 	if (server_port != 0) {
 		cout << "port: set to " << server_port << endl;
+	} else {
+		cout << "port Number did not set" << endl;
 	}
 }
 
-void helperCreate(bool created, bool & joined) {
+void helperCreate(int& created, int& joined) {
 	//create a listening socket here
 	if (created == false) {
 		created = true;
@@ -115,10 +254,18 @@ void helperCreate(bool created, bool & joined) {
 	}
 }
 
-void helperJoin(bool joined) {
-	//assume server add is 127.0.0.1 and server acc to you, initial 5001
-	//here act as client, and ping server, to accept, it should give some info
-	//as of now the server just notifies to close connection
+void helperJoin(char* joinCmd, bool joined) {
+	char* addr = fetchAddress(joinCmd, 6);
+	if (addr == NULL) {
+		return;
+	}
+	unsigned int port = fetchPortNumber(addr, indexOf(addr, ':') + 2);
+
+	if (port == 0) {
+		//Invalid portNumber
+		return;
+	}
+
 	if (joined == false) {
 		joined = true;
 		int clientThreadID = create(client);
@@ -129,76 +276,47 @@ void helperJoin(bool joined) {
 	}
 }
 
-void helperHelp() {
-	cout << "Commands supported: " << endl;
-	cout << "\thelp\t\t\t\t ==> Provides a list of command and their usage details"
-			<< endl;
-	cout << "\tport <x>\t\t\t ==> sets the port number (eg- port 1234)" << endl;
-	cout << "\tcreate\t\t\t\t ==> creates a ring" << endl;
-	cout
-			<< "\tjoin <x>\t\t\t ==> joins the ring with x address (eg- join 111.111.111.111:1000)"
-			<< endl;
-	cout << "\tquit\t\t\t\t ==> shuts down the ring" << endl;
-	cout
-			<< "\tput <key> <value>\t\t ==> inserts the given <key,value> pair in the ring (eg- put 23 654)"
-			<< endl;
-	cout
-			<< "\tget <key>\t\t\t ==> returns the previously inserted value corresponding to the key(eg- get 23)"
-			<< endl << endl;
-
-	cout
-			<< "\t---Yes!!! we have implemented BONUS COMMANDS, mentioned them below---"
-			<< endl;
-	cout << "\tfinger\t\t\t\t ==> prints the list of addresses of nodes on the ring"
-			<< endl;
-	cout << "\tsuccessor\t\t\t ==> prints the address of the next node on the ring"
-			<< endl;
-	cout
-			<< "\tpredecessor\t\t\t ==> prints the address of the previous node on the ring"
-			<< endl;
-	cout << "\tdump\t\t\t\t ==> displays all information pertaining to calling node"
-			<< endl;
-	cout
-			<< "\tdumpaddr <address>\t\t ==> displays all information pertaining to node at address (eg - dump 111.111.111.111:1000)"
-			<< endl;
-	cout << "\tdumpall\t\t\t\t ==> displays all information of all the nodes" << endl;
+bool checkJoinUsage(char* cmd) {
+	return true;
 }
 
 //-----TCP Functions-------
 void UI() {
-	bool created = false;
-	bool joined = false;
+	int created = false;
+	int joined = false;
 
 	while (1) {
 		cout << "------------------------------" << endl;
 		cout << ">>>: ";
 		fgets(ui_data, sizeof(ui_data), stdin);
 
-		if (strcmp(ui_data, "exit") == 0 || strcmp(ui_data, "EXIT") == 0) {
+		cout << "<<<: " << ui_data << endl;
+
+		char* cmdType = substring(ui_data, 0, indexOf(ui_data, ' '));
+
+		if (strcmp(cmdType, "exit") == 0 || strcmp(cmdType, "EXIT") == 0) {
 			break;
 		}
 
-		cout << "<<<: " << ui_data << endl;
-
-		if (strcmp(ui_data, "create\n") == 0) {
+		else if (strcmp(cmdType, "create") == 0) {
 			helperCreate(created, joined);
 		}
 
-		if (strcmp(ui_data, "help\n") == 0) {
+		else if (strcmp(cmdType, "help") == 0) {
 			helperHelp();
 		}
 
-		else if (startsWith(ui_data, "port") == 0) {
-			helperPort();
+		else if (strcmp(cmdType, "port") == 0) {
+			helperPort(ui_data);
 		}
 
-		else if (strcmp(ui_data, "join\n") == 0) {
-			helperJoin(joined);
+		else if (strcmp(cmdType, "join") == 0) {
+			helperJoin(ui_data, joined);
 		}
 
 		else {
 			cout
-					<< "sorry! seems like you are new here, please type 'help' for list of commands"
+					<< "sorry!!! It seems like you are new here, please type 'help' for list of commands"
 					<< endl;
 		}
 
@@ -207,7 +325,6 @@ void UI() {
 }
 
 void server() {
-	//will take an int let's say the port is random : 5001 --- //TO-DO: remove the comment
 	int sock, connected, bytes_recieved, trueint = 1;
 
 	struct sockaddr_in server_addr, client_addr;
@@ -243,7 +360,7 @@ void server() {
 	}
 
 	cout << "Starting to listen on: " << inet_ntoa(server_addr.sin_addr) << ":"
-			<< ntohs(server_addr.sin_port);
+			<< ntohs(server_addr.sin_port) << endl;
 	fflush(stdout);
 
 	while (1) {
@@ -267,14 +384,12 @@ void server() {
 }
 
 void client() {
-	cout << "client started" << endl;
+	cout << "---client started---" << endl;
 
 	int sock, bytes_recieved;
 	struct hostent *host;
-
 	struct sockaddr_in server_addr;
 
-	host = gethostbyname("127.0.0.1");
 	cout << "creating client socket" << endl;
 
 	if ((sock = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
@@ -324,7 +439,6 @@ void client() {
 		else {
 			send(sock, client_send_data, strlen(client_send_data), 0);
 			close(sock);
-			cout << "harinder jee" << endl;
 			//fflush(stdout);
 			break;
 		}
@@ -332,15 +446,8 @@ void client() {
 	cout << "Client end! Server sent to bug off. Or client ran away!" << endl;
 }
 
-void otherThread() {
-	while (1) {
-
-	}
-}
-
 int main() {
 	create(UI);
-	create(otherThread);
 	start();
 	return 0;
 }

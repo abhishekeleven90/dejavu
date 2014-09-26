@@ -1,11 +1,12 @@
+/*
 #include <string.h>
 #include <iostream>
 #include <stdio.h>
 
 #include <stdlib.h>
 using namespace std;
-/*
- #include "MyThread.h"
+
+#include "MyThread.h"
  #include <iostream>
  #define SECOND 1000000
 
@@ -29,7 +30,7 @@ using namespace std;
  while (1) {
  cout << "K" << endl;
  usleep(SECOND);
- clean();
+ //clean();
  }
  void* p;
  return p;
@@ -48,9 +49,9 @@ using namespace std;
  return 0;
  }
 
- */
 
-/*
+
+
 int main() {
 	while (1) {
 		char ui_data[1024];
@@ -63,4 +64,5 @@ int main() {
 	}
 	return 0;
 }
+
 */
