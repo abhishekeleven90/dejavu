@@ -47,7 +47,7 @@ address_t translate_address(address_t addr)
 
 //----------Constants---------
 #define TQ 1 //Time Quantum for round-robin scheduling
-#define STACK_SIZE 4096
+#define STACK_SIZE 30000
 #define N 50 //Number of max threads allowed
 //----------Globals---------
 enum State {
@@ -188,10 +188,10 @@ void switchThreads() {
 		//checkIfSleepDone(runningThread);
 		changeState(runningThread, RUNNING);
 		int runningThreadId = runningThread->stats->threadID;
-		////cout << "/----------------" << endl;
+		//cout << "/----------------" << endl;
 		//cout << "switching now to " << runningThreadId << endl;
 		//cout << "Ready Queue: ";
-		printQueue(&readyQueue);
+		//printQueue(&readyQueue);
 		//cout << "----------------/" << endl;
 		siglongjmp(jbuf[runningThreadId], 1);
 	} else {
@@ -232,9 +232,9 @@ Thread_node* searchInQueue(int threadId, list<Thread_node*> *l) {
 
 void printQueue(list<Thread_node*> *l) {
 	for (list<Thread_node*>::iterator it = (*l).begin(); it != (*l).end(); it++) {
-		//cout << (*it)->stats->threadID << ", ";
+		cout << (*it)->stats->threadID << ", ";
 	}
-	//cout << endl;
+	cout << endl;
 }
 
 bool isValidThreadID(int threadId) {

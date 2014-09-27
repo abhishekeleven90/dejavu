@@ -16,12 +16,14 @@ using namespace std;
 //----------Constants---------
 #define SECOND 1000000
 #define QUEUE_LIMIT 5
+#define RETRY_COUNT 5
 
 //----------Globals---------
 char ui_data[1024];
 char server_send_data[1024], server_recv_data[1024];
 char client_send_data[1024], client_recv_data[1024];
-unsigned int server_port = 0;
+unsigned int server_port = 0; //used by both client(for joining) & server(for userInput)
+char* ip2Join; //used by client to join the server
 
 struct Node {
 	Node* predecessor;
@@ -43,7 +45,6 @@ char* substring(char *string, int position, int length);
 void helperPort();
 void helperCreate(bool created, bool & joined);
 void helperJoin(bool joined);
-bool isValidJoinCmd();
 
 //-----TCP Functions-------
 void UI();
@@ -155,11 +156,12 @@ bool startsWith(const char *a, const char *b) {
 }
 
 char* fetchAddress(char* cmd, int pos) {
-	char* addr = substring(cmd, pos, strlen(cmd) - pos);
-	if (!isValidAddress(addr)) {
+	char* addrWithPort = substring(cmd, pos, strlen(cmd) - pos);
+	if (!isValidAddress(addrWithPort)) {
 		cout << "fetchAddress: Address not valid" << endl;
 		return NULL;
 	}
+	char* addr = substring(addrWithPort, 0, indexOf(addrWithPort, ':'));
 	return addr;
 }
 
@@ -183,7 +185,7 @@ bool isValidAddress(char* addr) {
 }
 
 unsigned int fetchPortNumber(char* string, int pos) {
-	char *portNumber = substring(string, pos, strlen(string) - pos + 1);
+	char *portNumber = substring(string, pos, strlen(string) - pos);
 	unsigned int port = atoi(portNumber);
 	if (isValidPort(port)) {
 		return port;
@@ -206,7 +208,7 @@ int indexOf(char* string, char of) {
 			return i;
 		}
 	}
-	return len-1;
+	return len - 1;
 }
 
 char* substring(char *string, int position, int length) {
@@ -259,12 +261,15 @@ void helperJoin(char* joinCmd, bool joined) {
 	if (addr == NULL) {
 		return;
 	}
-	unsigned int port = fetchPortNumber(addr, indexOf(addr, ':') + 2);
+	unsigned int port = fetchPortNumber(joinCmd, indexOf(joinCmd, ':') + 2);
 
 	if (port == 0) {
 		//Invalid portNumber
 		return;
 	}
+
+	ip2Join = addr;
+	server_port = port;
 
 	if (joined == false) {
 		joined = true;
@@ -276,10 +281,6 @@ void helperJoin(char* joinCmd, bool joined) {
 	}
 }
 
-bool checkJoinUsage(char* cmd) {
-	return true;
-}
-
 //-----TCP Functions-------
 void UI() {
 	int created = false;
@@ -287,6 +288,7 @@ void UI() {
 
 	while (1) {
 		cout << "------------------------------" << endl;
+
 		cout << ">>>: ";
 		fgets(ui_data, sizeof(ui_data), stdin);
 
@@ -295,7 +297,8 @@ void UI() {
 		char* cmdType = substring(ui_data, 0, indexOf(ui_data, ' '));
 
 		if (strcmp(cmdType, "exit") == 0 || strcmp(cmdType, "EXIT") == 0) {
-			break;
+			cout << "Thanks for using chord_DHT, see you again soon :)" << endl;
+			clean(); //cleaning all the threads & exiting
 		}
 
 		else if (strcmp(cmdType, "create") == 0) {
@@ -361,6 +364,8 @@ void server() {
 
 	cout << "Starting to listen on: " << inet_ntoa(server_addr.sin_addr) << ":"
 			<< ntohs(server_addr.sin_port) << endl;
+	cout << ">>>: ";
+
 	fflush(stdout);
 
 	while (1) {
@@ -389,6 +394,7 @@ void client() {
 	int sock, bytes_recieved;
 	struct hostent *host;
 	struct sockaddr_in server_addr;
+	host = gethostbyname(ip2Join);
 
 	cout << "creating client socket" << endl;
 
@@ -399,16 +405,28 @@ void client() {
 	cout << "client socket created" << endl;
 
 	server_addr.sin_family = AF_INET;
-	//server_addr.sin_port = htons(server_port); //TO-DO: might have to change here --- port thing
+	server_addr.sin_port = htons(server_port);
 	server_addr.sin_addr = *((struct in_addr *) host->h_addr);
 	bzero(&(server_addr.sin_zero), 8);
 
 	cout << "client will try and connect to server" << endl;
 
+	int retriedCount = 0;
 	while (connect(sock, (struct sockaddr *) &server_addr,
 			sizeof(struct sockaddr)) == -1) {
-		//At times the server is not up.
-		cout << "in some bad loop" << endl;
+
+		//trying again assuming the server is busy
+		retriedCount++;
+		cout << "server busy --- retrying(" << retriedCount << "/" << RETRY_COUNT << ")" << endl;
+		sleep(1);
+		if (retriedCount == RETRY_COUNT) {
+			cout
+					<< "server is not up or not responding, terminating client...please try again"
+					<< endl;
+			close(sock);
+			return;
+		}
+
 	}
 
 	cout << "client connected to server\n" << endl;
@@ -445,9 +463,11 @@ void client() {
 	}
 	cout << "Client end! Server sent to bug off. Or client ran away!" << endl;
 }
+/*
 
 int main() {
 	create(UI);
 	start();
 	return 0;
 }
+*/

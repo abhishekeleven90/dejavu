@@ -1,3 +1,8 @@
+#include <iostream>
+#include <stdlib.h>
+#include <string.h>
+#include <stdio.h>
+using namespace std;
 /*
 #include <string.h>
 #include <iostream>
@@ -66,3 +71,19 @@ int main() {
 }
 
 */
+
+
+int main() {
+	int m = 160;
+	char token[] = "0000000000000000000000000000000000000000";
+	int index = 39;
+	for (int i = 1; i < m; i++) {
+		int tmp = (i % 4) * 2;
+		token[index] = (char)(tmp+48);
+		cout << token << endl;
+		if (i % 4 == 0) {
+			index--;
+		}
+	}
+	return 0;
+}
