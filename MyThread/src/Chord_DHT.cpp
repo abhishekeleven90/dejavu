@@ -14,6 +14,7 @@
 #include <math.h>
 #include "MyThread.h"
 #include "MyHash.h"
+#include "MyString.h"
 
 using namespace std;
 
@@ -23,9 +24,6 @@ using namespace std;
 #define RETRY_COUNT 5
 
 #define M 160	//number of bits
-
-#define IP_SIZE 20
-
 //----------Globals---------
 char ui_data[1024];
 char server_send_data[1024], server_recv_data[1024];
@@ -59,36 +57,37 @@ Node* selfNode = new Node;
 
 //****************Function Declarations*******************
 //-------Helper Functions----------
-void tab(int count);
-void helperHelpNewCmd();
-void helperHelp();
-bool startsWith(const char *a, const char *b);
+void joinIpWithPort(char* ip, unsigned int port, char* ipWithPort);
+
 char* fetchAddress(char* cmd, int pos);
-bool isValidAddress(char* addr);
 unsigned int fetchPortNumber(char* string, int pos);
+
+bool isValidAddress(char* addr);
 bool isValidPort(unsigned int port);
-int indexOf(char* string, char of);
-char* substring(char *string, int position, int length);
-int countOccurence(char* string, char splitter);
+
 void printNotInNetworkErrorMessage();
 bool checkIfPartOfNw();
+
+void helperHelpNewCmd();
+
+void helperHelp();
 void helperPort(char* portCmd);
 void helperCreate();
 void helperJoin(char* joinCmd);
+void helperQuit();
+void helperPut();
+void helperGet();
+
+void helperFinger();
 void helperSuccessor();
 void helperPredecessor();
 void helperDump();
-void helperDumpAll();
 void helperDumpAddr();
-void helperFinger();
-void helperPut();
-void helperGet();
-void helperQuit();
+void helperDumpAll();
 
-void joinIpWithPort(char* ip, unsigned int port, char* ipWithPort);
-void intToChar(int intToChng, char* charToRet);
 void populateFingerTableSelf();
 void printAllFingerTable();
+
 void fillNodeEntries(struct sockaddr_in server_addr);
 
 //-----TCP Functions-------
@@ -104,22 +103,12 @@ nodeHelper* closest_preceding_finger(char key[HASH_HEX_BITS]);
 //****************Function Definitions*******************
 //-------Helper Functions----------
 
-void intToChar(int intToChng, char* charToRet) {
-	snprintf(charToRet, sizeof(charToRet), "%d", intToChng);
-}
-
 void joinIpWithPort(char* ip, unsigned int port, char* ipWithPort) {
 	char portChar[10];
 	intToChar(port, portChar);
 	strcpy(ipWithPort, ip);
 	strcat(ipWithPort, ":");
 	strcat(ipWithPort, portChar);
-}
-
-void tab(int count) {
-	for (int i = 0; i < count; i++) {
-		cout << "\t";
-	}
 }
 
 void helperHelpNewCmd() {
@@ -209,13 +198,6 @@ void helperHelp() {
 	cout << endl;
 }
 
-bool startsWith(const char *a, const char *b) {
-	if (strncmp(a, b, strlen(b)) == 0) {
-		return 0;
-	}
-	return 1;
-}
-
 char* fetchAddress(char* cmd, int pos) {
 	char* addrWithPort = substring(cmd, pos, strlen(cmd) - pos);
 	if (!isValidAddress(addrWithPort)) {
@@ -251,70 +233,6 @@ bool isValidPort(unsigned int port) {
 		return false;
 	}
 	return true;
-}
-
-int indexOf(char* string, char of) {
-	int len = strlen(string);
-	for (int i = 0; i < len; i++) {
-		if (string[i] == of) {
-			return i;
-		}
-	}
-	return len - 1;
-}
-
-char* substring(char *string, int position, int length) {
-	char *pointer;
-	int c;
-
-	pointer = (char*) malloc(length + 1);
-
-	if (pointer == NULL) {
-		printf("Inside substring : Unable to allocate memory.\n");
-		exit(EXIT_FAILURE);
-	}
-
-	for (c = 0; c < position - 1; c++) {
-		string++;
-	}
-
-	for (c = 0; c < length; c++) {
-		*(pointer + c) = *string;
-		string++;
-	}
-
-	*(pointer + c) = '\0';
-	return pointer;
-}
-
-int countOccurence(char* string, char splitter) {
-	int len = strlen(string);
-	int count = 0;
-	for (int i = 0; i < len; i++) {
-		if (string[i] == splitter) {
-			count++;
-		}
-	}
-	return count;
-}
-
-void split(char* string, char splitter, char splittedArr[][20]) {
-	int len = strlen(string);
-	char tmp[len];
-	int j = 0; //pointer for tmp string
-	int k = 0; //pointer for strings in splittedArr
-	for (int i = 0; i < len; i++) {
-		if (string[i] != splitter) {
-			tmp[j] = string[i];
-			j++;
-		} else {
-			tmp[j] = '\0';
-			strcpy(splittedArr[k], tmp);
-			j = 0;
-			k++;
-		}
-	}
-	strcpy(splittedArr[k], tmp);
 }
 
 void helperPort(char* portCmd) {
