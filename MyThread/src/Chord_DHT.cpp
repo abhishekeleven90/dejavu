@@ -60,6 +60,10 @@ void fillNodeEntries(struct sockaddr_in server_addr);
 
 void askSuccForFinger();
 
+void processQuit();
+void processSucc();
+void processFinger(char *addrs);
+
 //-----TCP Functions-------
 void userInput();
 void server();
@@ -331,6 +335,39 @@ void askSuccForFinger() {
 		; //wait until data is received
 }
 
+void processQuit() {
+	cout << "client wants to disconnect" << endl;
+	server_send_data[0] = 'q';
+	server_send_data[1] = '\0';
+}
+
+void processSucc() {
+	cout << "client wants my successor details" << endl;
+	strcpy(server_send_data, selfNode->successor->ipWithPort);
+}
+
+void processFinger(char *addrs) {
+	char *startAddr = substring(addrs, 0, indexOf(addrs, ',') + 1);
+	cout << startAddr << endl; //TO-DO : remove the cout -- keep it until finger fully tested
+	cout << "client wants to find the fingers" << endl;
+	if (strcmp(startAddr, selfNode->self->ipWithPort) == 0) { // checking if I am the starting node
+		cout << "Got all the fingers, printing now: " << endl;
+		int occ = countOccurence(addrs, ',') + 1;
+		char addressArr[occ][IP_SIZE];
+		split(addrs, ',', addressArr);
+		for (int i = 0; i < occ; i++) {
+			cout << i << " -> " << addressArr[i] << endl;
+		}
+	} else {
+		//TO-DO : needs to be tested
+		strcpy(client_send_data, server_recv_data);
+		strcat(client_send_data, ",");
+		askSuccForFinger();
+	}
+	server_send_data[0] = 'q';
+	server_send_data[1] = '\0';
+}
+
 //-----TCP Functions-------
 void userInput() {
 	while (1) {
@@ -444,7 +481,7 @@ void server() {
 	cout << ">>>: ";
 	fflush(stdout);
 	while (1) {
-		int bytes_recieved;
+		int bytes_received;
 		sin_size = sizeof(struct sockaddr_in);
 		connected
 				= accept(sock, (struct sockaddr*) ((&client_addr)), &sin_size);
@@ -453,51 +490,28 @@ void server() {
 				inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
 
 		cout << "closing the connection after communicating" << endl;
-		bytes_recieved = recv(connected, server_recv_data, 1024, 0);
+		bytes_received = recv(connected, server_recv_data, 1024, 0);
 		cout << "Data received from client" << endl;
-		server_recv_data[bytes_recieved] = '\0';
+		server_recv_data[bytes_received] = '\0';
 
 		char* type = substring(server_recv_data, 0, 2);
 		char* addrs = substring(server_recv_data, 3, strlen(server_recv_data));
 
-		if (strcmp(type, "q:") == 0) { //"quit"
-			cout << "client wants to disconnect" << endl;
-			server_send_data[0] = 'q';
-			server_send_data[1] = '\0';
+		if (strcmp(type, "q:") == 0) {
+			processQuit();
 		}
 
-		else if (strcmp(type, "s:") == 0) { //"succ"
-			cout << "client wants my successor details" << endl;
-			strcpy(server_send_data, selfNode->successor->ipWithPort);
+		else if (strcmp(type, "s:") == 0) {
+			processSucc();
 		}
 
-		else if (strcmp(type, "f:") == 0) { //"finger"
-			char* startAddr = substring(addrs, 0, indexOf(addrs, ',') + 1);
-			cout << startAddr << endl; //TO-DO : remove the cout -- keep it until finger fully tested
-			cout << "client wants to find the fingers" << endl;
-
-			if (strcmp(startAddr, selfNode->self->ipWithPort) == 0) { // checking if I am the starting node
-				cout << "Got all the fingers, printing now: " << endl;
-				int occ = countOccurence(addrs, ',') + 1;
-				char addressArr[occ][IP_SIZE];
-				split(addrs, ',', addressArr);
-				for (int i = 0; i < occ; i++) {
-					cout << i << " -> " << addressArr[i] << endl;
-				}
-			} else {
-				//TO-DO : needs to be tested
-				strcpy(client_send_data, server_recv_data);
-				strcat(client_send_data, ",");
-				askSuccForFinger();
-			}
-			server_send_data[0] = 'q';
-			server_send_data[1] = '\0';
+		else if (strcmp(type, "f:") == 0) {
+			processFinger(addrs);
 		}
 
 		send(connected, server_send_data, strlen(server_send_data), 0);
-		cout << "Done the required task, closing" << endl;
+		cout << "Done the required task, closing the connection" << endl;
 		close(connected);
-		cout << "closed" << endl;
 	}
 	//right now, doesn't reach here
 	close(sock);
