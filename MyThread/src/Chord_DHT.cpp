@@ -22,9 +22,9 @@ using namespace std;
 #define RETRY_COUNT 5
 
 #define M 160	//number of bits
-#define M1 161	// Array size (need one more for '\0')
 #define HASH_BYTES 20
 #define HASH_HEX_BITS 41
+#define IP_SIZE 20
 
 //----------Globals---------
 char ui_data[1024];
@@ -33,11 +33,20 @@ char client_send_data[1024], client_recv_data[1024];
 unsigned int server_port = 0; //used by both client(for joining) & server(for userInput)
 char* ip2Join; //used by client to join the server
 
+int created = false;
+int joined = false;
+
 struct nodeHelper {
-	char* nodeKey;
-	char* ip;
+	char nodeKey[HASH_HEX_BITS];
+	char ip[IP_SIZE];
 	unsigned int port;
-	char* ipWithPort;
+	char ipWithPort[IP_SIZE];
+};
+
+struct cmp_key { // comparator used for identifying keys
+	bool operator()(const char *first, const char *second) {
+		return memcmp(first, second, sizeof(first)) < 0;
+	}
 };
 
 struct Node {
@@ -45,15 +54,12 @@ struct Node {
 	nodeHelper* predecessor;
 	nodeHelper* successor;
 
-	string fingerStart[M];
+	char fingerStart[M][HASH_HEX_BITS];
 	nodeHelper* fingerNode[M];
+	map<const char*, const char*, cmp_key> keyMap;
 };
 
-struct cmp_key { // comparator used for identifying keys
-	bool operator()(const char *first,const char *second) {
-		return memcmp(first, second, sizeof(first)) < 0;
-	}
-};
+Node* selfNode = new Node;
 
 typedef map<const char*, const char*, cmp_key> hashmap;
 
@@ -69,14 +75,26 @@ unsigned int fetchPortNumber(char* string, int pos);
 bool isValidPort(unsigned int port);
 int indexOf(char* string, char of);
 char* substring(char *string, int position, int length);
-void helperPort();
-void helperCreate(bool created, bool & joined);
-void helperJoin(bool joined);
+void printNotInNetworkErrorMessage();
+bool checkIfPartOfNw();
+void helperPort(char* portCmd);
+void helperCreate();
+void helperJoin(char* joinCmd);
+void helperSuccessor();
+void helperPredecessor();
+void helperDump();
+void helperDumpAll();
+void helperDumpAddr();
+void helperFinger();
+void helperPut();
+void helperGet();
+void helperQuit();
 
 void insertInMap(hashmap* myMap, char *hexHashKey, char *data);
 bool isPresentInMap(hashmap myMap, char *key);
-const char* getFromMap(hashmap myMap,const char *key);
+const char* getFromMap(hashmap myMap, const char *key);
 void printHashKey(unsigned char* key, int len);
+unsigned int data2hexHash(const char* dataToHash, char* hexHash);
 void getHashInHex(unsigned char* key, char* tempValue, int len);
 int convert(char item);
 void hexAddition(char* hexOne, char* hexTwo, char* hexSum, int len);
@@ -87,13 +105,18 @@ unsigned int hashToHex(const char* dataToHash, char* hashkeyhex,
 
 void joinIpWithPort(char* ip, unsigned int port, char* ipWithPort);
 void intToChar(int intToChng, char* charToRet);
-void populateFingerTableSelf(Node *selfNode, nodeHelper *& selfHelper);
-nodeHelper *fillNodeEntries(struct sockaddr_in server_addr);
+void populateFingerTableSelf();
+void printAllFingerTable();
+void fillNodeEntries(struct sockaddr_in server_addr);
 
 //-----TCP Functions-------
 void userInput();
 void server();
 void client();
+
+//-----CHORD Functions-------
+nodeHelper* find_successor(char key[HASH_HEX_BITS]);
+nodeHelper* closest_preceding_finger(char key[HASH_HEX_BITS]);
 
 //****************Function Definitions*******************
 //-------Helper Functions----------
@@ -299,7 +322,7 @@ void helperPort(char* portCmd) {
 	}
 }
 
-void helperCreate(int& created, int& joined) {
+void helperCreate() {
 	//create a listening socket here
 	if (created == false) {
 		created = true;
@@ -311,7 +334,7 @@ void helperCreate(int& created, int& joined) {
 	}
 }
 
-void helperJoin(char* joinCmd, bool joined) {
+void helperJoin(char* joinCmd) {
 	char* addr = fetchAddress(joinCmd, 6);
 	if (addr == NULL) {
 		return;
@@ -327,13 +350,76 @@ void helperJoin(char* joinCmd, bool joined) {
 	server_port = port;
 
 	if (joined == false) {
-		joined = true;
+		helperCreate(); //The node needs to be created as a server as well
 		int clientThreadID = create(client);
 		run(clientThreadID);
 	} else {
 		cout << "Already in a network and joined, joined thread running"
 				<< endl;
 	}
+}
+
+void printNotInNetworkErrorMessage() {
+	cout << "Hey!!! I am not yet in the network, try again later" << endl;
+}
+
+bool checkIfPartOfNw() {
+	if (selfNode->self == NULL) {
+		printNotInNetworkErrorMessage();
+		return false;
+	}
+	return true;
+}
+
+void helperSuccessor() {
+	if (!checkIfPartOfNw()) {
+		return;
+	}
+	cout << "Successor-> " << selfNode->successor->ipWithPort << endl;
+}
+
+void helperPredecessor() {
+	if (!checkIfPartOfNw()) {
+		return;
+	}
+	cout << "Predecessor-> " << selfNode->predecessor->ipWithPort << endl;
+}
+
+void helperDump() {
+	if (!checkIfPartOfNw()) {
+		return;
+	}
+	cout << "self-> " << selfNode->self->ipWithPort << endl;
+	cout << "Self Key-> " << selfNode->self->nodeKey << endl;
+	cout << "Successor-> " << selfNode->successor->ipWithPort << endl;
+	cout << "Predecessor-> " << selfNode->predecessor->ipWithPort << endl;
+	cout << "Finger table: " << endl;
+	printAllFingerTable();
+}
+
+void helperDumpAll() {
+
+}
+
+void helperDumpAddr() {
+
+}
+
+void helperFinger() {
+
+}
+
+void helperPut() {
+
+}
+
+void helperGet() {
+
+}
+
+void helperQuit() {
+	cout << "Thanks for using chord_DHT, see you again soon :)" << endl;
+	clean(); //cleaning all the threads & exiting
 }
 
 //hash related function
@@ -375,7 +461,7 @@ bool isPresentInMap(hashmap myMap, char *key) {
 }
 
 //use this function to getFromMap only if 'isPresentInMap == true'
-const char* getFromMap(hashmap myMap,const char *key) {
+const char* getFromMap(hashmap myMap, const char *key) {
 	hashmap::iterator iter = myMap.find(key);
 	return (*iter).second;
 }
@@ -401,7 +487,7 @@ void hexAddition(char* hexOne, char* hexTwo, char* hexSum, int len) {
 		temp %= 16;
 		hexSum[i] = hexArr[temp];
 	}
-	hexSum[len + 1] = '\0';
+	hexSum[len] = '\0';
 }
 
 //hash of the given data in given mode, hash is stored in outHash
@@ -440,35 +526,40 @@ void getHashInHex(unsigned char* key, char* tempValue, int len) {
 }
 
 //populates finger table with all the self entries - only node in the network
-void populateFingerTableSelf(Node *selfNode, nodeHelper *& selfHelper) {
+void populateFingerTableSelf() {
 	for (int i = 0; i < M; i++) {
-		selfNode->fingerNode[i] = selfHelper;
+		selfNode->fingerNode[i] = selfNode->self;
 	}
 }
 
-nodeHelper *fillNodeEntries(struct sockaddr_in server_addr) {
-	nodeHelper *selfHelper = new nodeHelper;
+void printAllFingerTable() {
+	for (int i = 0; i < M; i++) {
+		cout << "start: " << selfNode-> fingerStart[i] << ", ";
+		cout << "node: " << selfNode-> fingerNode[i]->nodeKey << endl;
+	}
+}
 
-	selfHelper->ip = inet_ntoa(server_addr.sin_addr);
-	selfHelper->port = ntohs(server_addr.sin_port);
+void fillNodeEntries(struct sockaddr_in server_addr) {
+	nodeHelper* self = new nodeHelper();
 
-	char ipWithPort[20];
-	joinIpWithPort(selfHelper->ip, selfHelper->port, ipWithPort);
-	selfHelper->ipWithPort = ipWithPort;
+	strcpy(self->ip, inet_ntoa(server_addr.sin_addr));
+	self->port = ntohs(server_addr.sin_port);
+
+	char ipWithPort[IP_SIZE];
+	joinIpWithPort(self->ip, self->port, ipWithPort);
+	strcpy(self->ipWithPort, ipWithPort);
 
 	char hexHash[HASH_HEX_BITS];
-	data2hexHash(selfHelper->ipWithPort, hexHash);
-	selfHelper->nodeKey = hexHash;
+	data2hexHash(self->ipWithPort, hexHash);
+	strcpy(self->nodeKey, hexHash);
 
-	Node *selfNode = new Node;
-	selfNode->self = selfHelper;
-	selfNode->successor = selfHelper;
-	selfNode->predecessor = selfHelper;
+	selfNode->self = self;
+	selfNode->successor = self;
+	selfNode->predecessor = self;
 
 	//Fill finger table
 	int index = 39;
 	for (int i = 0; i < M; i++) {
-		//selfNode->fingerStart[i] =;
 		if (i != 0 && i % 4 == 0) {
 			index--;
 		}
@@ -476,22 +567,14 @@ nodeHelper *fillNodeEntries(struct sockaddr_in server_addr) {
 		int tmp = pow(2, i % 4);
 		token[index] = (char) (tmp + 48);
 		char hexVal[HASH_HEX_BITS];
-		hexAddition(selfHelper-> nodeKey, token, hexVal,
-				strlen(selfHelper->nodeKey));
-		selfNode->fingerStart[i] = hexVal;
+		hexAddition(self-> nodeKey, token, hexVal, strlen(self->nodeKey));
+		strcpy(selfNode->fingerStart[i], hexVal);
 	}
-	for (int i = 0; i < M; i++) {
-		cout << selfNode-> fingerStart[i] << endl;
-	}
-	populateFingerTableSelf(selfNode, selfHelper);
-	return selfHelper;
+	populateFingerTableSelf();
 }
 
 //-----TCP Functions-------
 void userInput() {
-	int created = false;
-	int joined = false;
-
 	while (1) {
 		cout << "------------------------------" << endl;
 
@@ -502,16 +585,7 @@ void userInput() {
 
 		char* cmdType = substring(ui_data, 0, indexOf(ui_data, ' '));
 
-		if (strcmp(cmdType, "exit") == 0 || strcmp(cmdType, "EXIT") == 0) {
-			cout << "Thanks for using chord_DHT, see you again soon :)" << endl;
-			clean(); //cleaning all the threads & exiting
-		}
-
-		else if (strcmp(cmdType, "create") == 0) {
-			helperCreate(created, joined);
-		}
-
-		else if (strcmp(cmdType, "help") == 0) {
+		if (strcmp(cmdType, "help") == 0) {
 			helperHelp();
 		}
 
@@ -519,8 +593,48 @@ void userInput() {
 			helperPort(ui_data);
 		}
 
+		else if (strcmp(cmdType, "create") == 0) {
+			helperCreate();
+		}
+
 		else if (strcmp(cmdType, "join") == 0) {
-			helperJoin(ui_data, joined);
+			helperJoin(ui_data);
+		}
+
+		else if (strcmp(cmdType, "quit") == 0) {
+			helperQuit();
+		}
+
+		else if (strcmp(cmdType, "put") == 0) {
+			helperPut();
+		}
+
+		else if (strcmp(cmdType, "get") == 0) {
+			helperGet();
+		}
+
+		else if (strcmp(cmdType, "finger") == 0) {
+			helperFinger();
+		}
+
+		else if (strcmp(cmdType, "successor") == 0) {
+			helperSuccessor();
+		}
+
+		else if (strcmp(cmdType, "predecessor") == 0) {
+			helperPredecessor();
+		}
+
+		else if (strcmp(cmdType, "dump") == 0) {
+			helperDump();
+		}
+
+		else if (strcmp(cmdType, "dumpaddr") == 0) {
+			helperDumpAddr();
+		}
+
+		else if (strcmp(cmdType, "dumpall") == 0) {
+			helperDumpAll();
 		}
 
 		else {
@@ -566,10 +680,8 @@ void server() {
 		perror("Listen");
 		exit(1);
 	}
-	nodeHelper *selfHelper = fillNodeEntries(server_addr);
-
-	cout << "Starting to listen on: " << selfHelper->ip << ":"
-			<< selfHelper->port << endl;
+	fillNodeEntries(server_addr);
+	cout << "Starting to listen on: " << selfNode->self->ipWithPort << endl;
 	cout << ">>>: ";
 	fflush(stdout);
 	while (1) {
@@ -632,7 +744,6 @@ void client() {
 			close(sock);
 			return;
 		}
-
 	}
 
 	cout << "client connected to server\n" << endl;
@@ -669,6 +780,41 @@ void client() {
 	}
 	cout << "Client end! Server sent to bug off. Or client ran away!" << endl;
 }
+
+//-----------CHORD FUNCTIONS-------
+
+
+nodeHelper* get_successorFromRemoteNode(nodeHelper* remoteNode) {
+
+}
+
+nodeHelper* find_successor(char key[HASH_HEX_BITS]) {
+	char* nodeKey = selfNode->self->nodeKey;
+	char* succKey = selfNode->successor->nodeKey;
+
+	if (strcmp(key, nodeKey) > 0 && strcmp(key, succKey) <= 0) {
+		return selfNode->successor;
+	} else {
+		nodeHelper* closestPrecedingNode = closest_preceding_finger(key);
+		if (strcmp(closestPrecedingNode->nodeKey, selfNode->self->nodeKey) == 0) {
+			return selfNode->self;
+		}
+		//TO-DO: find successor on remote machine(closestPrecedingNode)
+	}
+}
+
+nodeHelper* closest_preceding_finger(char key[HASH_HEX_BITS]) {
+	for (int i = M - 1; i >= 0; i--) {
+		char* fingerNodeId = selfNode->fingerNode[i]->nodeKey;
+		if (strcmp(fingerNodeId, selfNode->self->nodeKey) > 0 && strcmp(
+				fingerNodeId, key) < 0) {
+			return selfNode->fingerNode[i];
+		}
+	}
+	return selfNode->self;
+}
+
+//-----------MAIN---------------
 
 int main() {
 	create(userInput);
