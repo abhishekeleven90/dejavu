@@ -11,6 +11,7 @@
 #include <string.h>
 #include <map>
 #include <openssl/evp.h>
+#include <math.h>
 #include "MyThread.h"
 
 using namespace std;
@@ -32,17 +33,29 @@ char client_send_data[1024], client_recv_data[1024];
 unsigned int server_port = 0; //used by both client(for joining) & server(for userInput)
 char* ip2Join; //used by client to join the server
 
+struct nodeHelper {
+	char* nodeKey;
+	char* ip;
+	unsigned int port;
+	char* ipWithPort;
+};
+
 struct Node {
-	Node* predecessor;
+	nodeHelper* self;
+	nodeHelper* predecessor;
+	nodeHelper* successor;
+
+	string fingerStart[M];
+	nodeHelper* fingerNode[M];
 };
 
 struct cmp_key { // comparator used for identifying keys
-	bool operator()(char *first, char *second) {
+	bool operator()(const char *first,const char *second) {
 		return memcmp(first, second, sizeof(first)) < 0;
 	}
 };
 
-typedef map<char*, char*, cmp_key> hashmap;
+typedef map<const char*, const char*, cmp_key> hashmap;
 
 //****************Function Declarations*******************
 //-------Helper Functions----------
@@ -62,7 +75,7 @@ void helperJoin(bool joined);
 
 void insertInMap(hashmap* myMap, char *hexHashKey, char *data);
 bool isPresentInMap(hashmap myMap, char *key);
-char* getFromMap(hashmap myMap, char *key);
+const char* getFromMap(hashmap myMap,const char *key);
 void printHashKey(unsigned char* key, int len);
 void getHashInHex(unsigned char* key, char* tempValue, int len);
 int convert(char item);
@@ -72,15 +85,31 @@ unsigned int hash(const char *mode, const char* dataToHash, size_t dataSize,
 unsigned int hashToHex(const char* dataToHash, char* hashkeyhex,
 		size_t dataSize);
 
+void joinIpWithPort(char* ip, unsigned int port, char* ipWithPort);
+void intToChar(int intToChng, char* charToRet);
+void populateFingerTableSelf(Node *selfNode, nodeHelper *& selfHelper);
+nodeHelper *fillNodeEntries(struct sockaddr_in server_addr);
+
 //-----TCP Functions-------
 void userInput();
 void server();
 void client();
 
-//-----Chord Functions----------
-
 //****************Function Definitions*******************
 //-------Helper Functions----------
+
+void intToChar(int intToChng, char* charToRet) {
+	snprintf(charToRet, sizeof(charToRet), "%d", intToChng);
+}
+
+void joinIpWithPort(char* ip, unsigned int port, char* ipWithPort) {
+	char portChar[10];
+	intToChar(port, portChar);
+	strcpy(ipWithPort, ip);
+	strcat(ipWithPort, ":");
+	strcat(ipWithPort, portChar);
+}
+
 void tab(int count) {
 	for (int i = 0; i < count; i++) {
 		cout << "\t";
@@ -333,7 +362,7 @@ int convert(char item) {
 }
 
 //Used to insert entries in fingerTable
-void insertInMap(hashmap* myMap, char *hexHashKey, char *data) {
+void insertInMap(hashmap* myMap, char *hexHashKey, const char *data) {
 	(*myMap).insert(hashmap::value_type(hexHashKey, data));
 }
 
@@ -346,7 +375,7 @@ bool isPresentInMap(hashmap myMap, char *key) {
 }
 
 //use this function to getFromMap only if 'isPresentInMap == true'
-char* getFromMap(hashmap myMap, char *key) {
+const char* getFromMap(hashmap myMap,const char *key) {
 	hashmap::iterator iter = myMap.find(key);
 	return (*iter).second;
 }
@@ -408,6 +437,54 @@ unsigned int data2hexHash(const char* dataToHash, char* hexHash) {
 void getHashInHex(unsigned char* key, char* tempValue, int len) {
 	for (int i = 0; i < len; ++i)
 		sprintf(tempValue + 2 * i, "%02x", (unsigned char) key[i]);
+}
+
+//populates finger table with all the self entries - only node in the network
+void populateFingerTableSelf(Node *selfNode, nodeHelper *& selfHelper) {
+	for (int i = 0; i < M; i++) {
+		selfNode->fingerNode[i] = selfHelper;
+	}
+}
+
+nodeHelper *fillNodeEntries(struct sockaddr_in server_addr) {
+	nodeHelper *selfHelper = new nodeHelper;
+
+	selfHelper->ip = inet_ntoa(server_addr.sin_addr);
+	selfHelper->port = ntohs(server_addr.sin_port);
+
+	char ipWithPort[20];
+	joinIpWithPort(selfHelper->ip, selfHelper->port, ipWithPort);
+	selfHelper->ipWithPort = ipWithPort;
+
+	char hexHash[HASH_HEX_BITS];
+	data2hexHash(selfHelper->ipWithPort, hexHash);
+	selfHelper->nodeKey = hexHash;
+
+	Node *selfNode = new Node;
+	selfNode->self = selfHelper;
+	selfNode->successor = selfHelper;
+	selfNode->predecessor = selfHelper;
+
+	//Fill finger table
+	int index = 39;
+	for (int i = 0; i < M; i++) {
+		//selfNode->fingerStart[i] =;
+		if (i != 0 && i % 4 == 0) {
+			index--;
+		}
+		char token[] = "0000000000000000000000000000000000000000";
+		int tmp = pow(2, i % 4);
+		token[index] = (char) (tmp + 48);
+		char hexVal[HASH_HEX_BITS];
+		hexAddition(selfHelper-> nodeKey, token, hexVal,
+				strlen(selfHelper->nodeKey));
+		selfNode->fingerStart[i] = hexVal;
+	}
+	for (int i = 0; i < M; i++) {
+		cout << selfNode-> fingerStart[i] << endl;
+	}
+	populateFingerTableSelf(selfNode, selfHelper);
+	return selfHelper;
 }
 
 //-----TCP Functions-------
@@ -480,26 +557,25 @@ void server() {
 
 	bzero(&(server_addr.sin_zero), 8);
 
-	if (bind(sock, (struct sockaddr *) &server_addr, sizeof(struct sockaddr))
-			== -1) {
+	if (bind(sock, (struct sockaddr *) ((&server_addr)),
+			sizeof(struct sockaddr)) == -1) {
 		perror("Unable to bind");
 		exit(1);
 	}
-
 	if (listen(sock, QUEUE_LIMIT) == -1) {
 		perror("Listen");
 		exit(1);
 	}
+	nodeHelper *selfHelper = fillNodeEntries(server_addr);
 
-	cout << "Starting to listen on: " << inet_ntoa(server_addr.sin_addr) << ":"
-			<< ntohs(server_addr.sin_port) << endl;
+	cout << "Starting to listen on: " << selfHelper->ip << ":"
+			<< selfHelper->port << endl;
 	cout << ">>>: ";
-
 	fflush(stdout);
-
 	while (1) {
 		sin_size = sizeof(struct sockaddr_in);
-		connected = accept(sock, (struct sockaddr *) &client_addr, &sin_size);
+		connected
+				= accept(sock, (struct sockaddr*) ((&client_addr)), &sin_size);
 
 		printf("\n I got a connection from (%s , %d)",
 				inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
