@@ -77,6 +77,7 @@ unsigned int fetchPortNumber(char* string, int pos);
 bool isValidPort(unsigned int port);
 int indexOf(char* string, char of);
 char* substring(char *string, int position, int length);
+int countOccurence(char* string, char splitter);
 void printNotInNetworkErrorMessage();
 bool checkIfPartOfNw();
 void helperPort(char* portCmd);
@@ -247,17 +248,8 @@ char* fetchAddress(char* cmd, int pos) {
 }
 
 bool isValidAddress(char* addr) {
-	int len = strlen(addr);
-	int dotCount = 0;
-	int colonCount = 0;
-
-	for (int i = 0; i < len; i++) {
-		if (addr[i] == ':') {
-			colonCount++;
-		} else if (addr[i] == '.') {
-			dotCount++;
-		}
-	}
+	int dotCount = countOccurence(addr, '.');
+	int colonCount = countOccurence(addr, ':');
 
 	if (colonCount == 1 && dotCount == 3) {
 		return true;
@@ -316,6 +308,36 @@ char* substring(char *string, int position, int length) {
 	return pointer;
 }
 
+int countOccurence(char* string, char splitter) {
+	int len = strlen(string);
+	int count = 0;
+	for (int i = 0; i < len; i++) {
+		if (string[i] == splitter) {
+			count++;
+		}
+	}
+	return count;
+}
+
+void split(char* string, char splitter, char splittedArr[][20]) {
+	int len = strlen(string);
+	char tmp[len];
+	int j = 0; //pointer for tmp string
+	int k = 0; //pointer for strings in splittedArr
+	for (int i = 0; i < len; i++) {
+		if (string[i] != splitter) {
+			tmp[j] = string[i];
+			j++;
+		} else {
+			tmp[j] = '\0';
+			strcpy(splittedArr[k], tmp);
+			j = 0;
+			k++;
+		}
+	}
+	strcpy(splittedArr[k], tmp);
+}
+
 void helperPort(char* portCmd) {
 	server_port = fetchPortNumber(portCmd, 6);
 	if (server_port != 0) {
@@ -355,7 +377,8 @@ void helperJoin(char* joinCmd) {
 	if (joined == false) {
 		helperCreate(); //The node needs to be created as a server as well
 		client_send_data[0] = 'q';
-		client_send_data[1] = '\0';
+		client_send_data[1] = ':';
+		client_send_data[2] = '\0';
 		int clientThreadID = create(client);
 		run(clientThreadID);
 	} else {
@@ -390,44 +413,84 @@ void helperPredecessor() {
 	cout << "Predecessor-> " << selfNode->predecessor->ipWithPort << endl;
 }
 
-void helperDump() {
-	if (!checkIfPartOfNw()) {
-		return;
-	}
-	cout << "self-> " << selfNode->self->ipWithPort << endl;
-	cout << "Self Key-> " << selfNode->self->nodeKey << endl;
-	cout << "Successor-> " << selfNode->successor->ipWithPort << endl;
-	cout << "Predecessor-> " << selfNode->predecessor->ipWithPort << endl;
+void printNodeDetails(Node* node) {
+	cout << "self-> " << node->self->ipWithPort << endl;
+	cout << "Self Key-> " << node->self->nodeKey << endl;
+	cout << "Successor-> " << node->successor->ipWithPort << endl;
+	cout << "Predecessor-> " << node->predecessor->ipWithPort << endl;
 	cout << "Finger table: " << endl;
 	printAllFingerTable();
 }
 
+void helperDump() {
+	if (!checkIfPartOfNw()) {
+		return;
+	}
+	printNodeDetails(selfNode);
+}
+
 void helperDumpAll() {
-	nodeHelper* tmpNode = new nodeHelper;
-	strcpy(tmpNode->ip, "0.0.0.0");
-	tmpNode->port = 5000;
-	get_SuccFromRemoteNode(tmpNode);
+	if (!checkIfPartOfNw()) {
+		return;
+	}
+	//TO-DO: needs to be implemented
+
+	/*nodeHelper* tmpNode = new nodeHelper;
+	 strcpy(tmpNode->ip, "0.0.0.0");
+	 tmpNode->port = 5000;
+	 get_SuccFromRemoteNode(tmpNode);*/
 }
 
 void helperDumpAddr() {
-
+	if (!checkIfPartOfNw()) {
+		return;
+	}
+	//TO-DO: needs to be implemented
 }
 
-void helperFinger() {
+void askSuccForFinger() {
+	strcat(client_send_data, selfNode->self->ipWithPort);
+	int clientThreadID = create(client);
+	client_recv_data[0] = '\0';
+	run(clientThreadID);
+	while (client_recv_data[0] == '\0')
+		; //wait until data is received
 
+}
+void helperFinger() {
+	if (!checkIfPartOfNw()) {
+		return;
+	}
+
+	ip2Join = selfNode->successor->ip;
+	client_port = selfNode->successor->port;
+
+	char tmp[3] = "f:";
+	strcpy(client_send_data, tmp);
+	askSuccForFinger();
 }
 
 void helperPut() {
-
+	if (!checkIfPartOfNw()) {
+		return;
+	}
+	//TO-DO: needs to be implemented
 }
 
 void helperGet() {
-
+	if (!checkIfPartOfNw()) {
+		return;
+	}
+	//TO-DO: needs to be implemented
 }
 
 void helperQuit() {
+	if (!checkIfPartOfNw()) {
+		return;
+	}
 	cout << "Thanks for using chord_DHT, see you again soon :)" << endl;
 	clean(); //cleaning all the threads & exiting
+	//TO-DO: needs to be implemented
 }
 
 //hash related function
@@ -707,15 +770,41 @@ void server() {
 		cout << "Data received from client" << endl;
 		server_recv_data[bytes_recieved] = '\0';
 
-		if (strcmp(server_recv_data, "q") == 0) { //"quit"
+		char* type = substring(server_recv_data, 0, 2);
+		char* addrs = substring(server_recv_data, 3, strlen(server_recv_data));
+
+		if (strcmp(type, "q:") == 0) { //"quit"
 			cout << "client wants to disconnect" << endl;
 			server_send_data[0] = 'q';
 			server_send_data[1] = '\0';
 		}
 
-		else if (strcmp(server_recv_data, "s") == 0) { //"succ"
+		else if (strcmp(type, "s:") == 0) { //"succ"
 			cout << "client wants my successor details" << endl;
 			strcpy(server_send_data, selfNode->successor->ipWithPort);
+		}
+
+		else if (strcmp(type, "f:") == 0) { //"finger"
+			char* startAddr = substring(addrs, 0, indexOf(addrs, ',') + 1);
+			cout << startAddr << endl; //TO-DO : remove the cout -- keep it until finger fully tested
+			cout << "client wants to find the fingers" << endl;
+
+			if (strcmp(startAddr, selfNode->self->ipWithPort) == 0) { // checking if I am the starting node
+				cout << "Got all the fingers, printing now: " << endl;
+				int occ = countOccurence(addrs, ',') + 1;
+				char addressArr[occ][IP_SIZE];
+				split(addrs, ',', addressArr);
+				for (int i = 0; i < occ; i++) {
+					cout << i << " -> " << addressArr[i] << endl;
+				}
+			} else {
+				//TO-DO : needs to be tested
+				strcpy(client_send_data, server_recv_data);
+				strcat(client_send_data, ",");
+				askSuccForFinger();
+			}
+			server_send_data[0] = 'q';
+			server_send_data[1] = '\0';
 		}
 
 		send(connected, server_send_data, strlen(server_send_data), 0);
@@ -787,7 +876,8 @@ void get_SuccFromRemoteNode(nodeHelper* remoteNode) {
 	ip2Join = remoteNode->ip;
 	client_port = remoteNode->port;
 	client_send_data[0] = 's';
-	client_send_data[1] = '\0';
+	client_send_data[1] = ':';
+	client_send_data[2] = '\0';
 	int clientThreadID = create(client);
 	client_recv_data[0] = '\0';
 	run(clientThreadID);
