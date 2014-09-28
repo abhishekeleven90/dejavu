@@ -30,7 +30,9 @@ using namespace std;
 char ui_data[1024];
 char server_send_data[1024], server_recv_data[1024];
 char client_send_data[1024], client_recv_data[1024];
-unsigned int server_port = 0; //used by both client(for joining) & server(for userInput)
+
+unsigned int server_port = 0;
+unsigned int client_port = 0; // port with which to connect to server
 char* ip2Join; //used by client to join the server
 
 int created = false;
@@ -115,6 +117,7 @@ void server();
 void client();
 
 //-----CHORD Functions-------
+void get_SuccFromRemoteNode(nodeHelper* remoteNode);
 nodeHelper* find_successor(char key[HASH_HEX_BITS]);
 nodeHelper* closest_preceding_finger(char key[HASH_HEX_BITS]);
 
@@ -347,10 +350,12 @@ void helperJoin(char* joinCmd) {
 	}
 
 	ip2Join = addr;
-	server_port = port;
+	client_port = port;
 
 	if (joined == false) {
 		helperCreate(); //The node needs to be created as a server as well
+		client_send_data[0] = 'q';
+		client_send_data[1] = '\0';
 		int clientThreadID = create(client);
 		run(clientThreadID);
 	} else {
@@ -398,7 +403,10 @@ void helperDump() {
 }
 
 void helperDumpAll() {
-
+	nodeHelper* tmpNode = new nodeHelper;
+	strcpy(tmpNode->ip, "0.0.0.0");
+	tmpNode->port = 5000;
+	get_SuccFromRemoteNode(tmpNode);
 }
 
 void helperDumpAddr() {
@@ -681,10 +689,12 @@ void server() {
 		exit(1);
 	}
 	fillNodeEntries(server_addr);
+
 	cout << "Starting to listen on: " << selfNode->self->ipWithPort << endl;
 	cout << ">>>: ";
 	fflush(stdout);
 	while (1) {
+		int bytes_recieved;
 		sin_size = sizeof(struct sockaddr_in);
 		connected
 				= accept(sock, (struct sockaddr*) ((&client_addr)), &sin_size);
@@ -693,41 +703,45 @@ void server() {
 				inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
 
 		cout << "closing the connection after communicating" << endl;
+		bytes_recieved = recv(connected, server_recv_data, 1024, 0);
+		cout << "Data received from client" << endl;
+		server_recv_data[bytes_recieved] = '\0';
 
-		server_send_data[0] = 'q';
-		server_send_data[1] = '\0';
+		if (strcmp(server_recv_data, "q") == 0) { //"quit"
+			cout << "client wants to disconnect" << endl;
+			server_send_data[0] = 'q';
+			server_send_data[1] = '\0';
+		}
+
+		else if (strcmp(server_recv_data, "s") == 0) { //"succ"
+			cout << "client wants my successor details" << endl;
+			strcpy(server_send_data, selfNode->successor->ipWithPort);
+		}
 
 		send(connected, server_send_data, strlen(server_send_data), 0);
+		cout << "Done the required task, closing" << endl;
 		close(connected);
-		cout << "closed";
+		cout << "closed" << endl;
 	}
 	//right now, doesn't reach here
 	close(sock);
 }
 
-void client() {
-	cout << "---client started---" << endl;
-
-	int sock, bytes_recieved;
+bool connectToServer(int & sock) {
 	struct hostent *host;
 	struct sockaddr_in server_addr;
 	host = gethostbyname(ip2Join);
-
 	cout << "creating client socket" << endl;
-
 	if ((sock = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
 		perror("Socket");
 		exit(1);
 	}
 	cout << "client socket created" << endl;
-
 	server_addr.sin_family = AF_INET;
-	server_addr.sin_port = htons(server_port);
+	server_addr.sin_port = htons(client_port);
 	server_addr.sin_addr = *((struct in_addr *) host->h_addr);
 	bzero(&(server_addr.sin_zero), 8);
-
 	cout << "client will try and connect to server" << endl;
-
 	int retriedCount = 0;
 	while (connect(sock, (struct sockaddr *) &server_addr,
 			sizeof(struct sockaddr)) == -1) {
@@ -742,50 +756,44 @@ void client() {
 					<< "server is not up or not responding, terminating client...please try again"
 					<< endl;
 			close(sock);
-			return;
+			return false;
 		}
 	}
-
 	cout << "client connected to server\n" << endl;
+	return true;
+}
 
-	while (1) {
-		cout << "Inside client loop" << endl;
-		cout << "Receive data from server" << endl;
-		cout << "Client socket ID:" << sock << endl;
+void client() {
+	cout << "---client started---" << endl;
 
-		bytes_recieved = recv(sock, client_recv_data, 1024, 0);
-		cout << "Data successfully received" << endl;
-		client_recv_data[bytes_recieved] = '\0';
-		if (strcmp(client_recv_data, "q") == 0 || strcmp(client_recv_data, "Q")
-				== 0) {
-			close(sock);
-			break;
-		} else {
-			printf("\nRecieved data = %s ", client_recv_data);
-		}
+	int sock, bytes_recieved;
 
-		printf("\nSEND (q or Q to quit) : ");
-		fgets(client_send_data, sizeof(client_send_data), stdin);
-
-		if (strcmp(client_send_data, "q") != 0 && strcmp(client_send_data, "Q")
-				!= 0)
-			send(sock, client_send_data, strlen(client_send_data), 0);
-
-		else {
-			send(sock, client_send_data, strlen(client_send_data), 0);
-			close(sock);
-			//fflush(stdout);
-			break;
-		}
+	if (!connectToServer(sock)) {
+		return;
 	}
-	cout << "Client end! Server sent to bug off. Or client ran away!" << endl;
+
+	cout << "Client socket ID:" << sock << endl;
+
+	send(sock, client_send_data, strlen(client_send_data), 0);
+
+	bytes_recieved = recv(sock, client_recv_data, 1024, 0);
+	cout << "Data successfully received" << endl;
+	client_recv_data[bytes_recieved] = '\0';
+	close(sock);
 }
 
 //-----------CHORD FUNCTIONS-------
-
-
-nodeHelper* get_successorFromRemoteNode(nodeHelper* remoteNode) {
-
+void get_SuccFromRemoteNode(nodeHelper* remoteNode) {
+	ip2Join = remoteNode->ip;
+	client_port = remoteNode->port;
+	client_send_data[0] = 's';
+	client_send_data[1] = '\0';
+	int clientThreadID = create(client);
+	client_recv_data[0] = '\0';
+	run(clientThreadID);
+	while (client_recv_data[0] == '\0')
+		; //wait until data is received
+	cout << client_recv_data << endl;
 }
 
 nodeHelper* find_successor(char key[HASH_HEX_BITS]) {
