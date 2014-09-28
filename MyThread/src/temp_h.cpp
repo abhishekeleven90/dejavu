@@ -73,6 +73,7 @@ using namespace std;
 
  */
 
+/*
 int main() {
 	int m = 160;
 	int index = 39;
@@ -87,3 +88,4 @@ int main() {
 	}
 	return 0;
 }
+*/

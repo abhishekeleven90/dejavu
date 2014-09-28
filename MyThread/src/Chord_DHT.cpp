@@ -1,4 +1,3 @@
-#include "MyThread.h"
 #include <iostream>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -10,6 +9,9 @@
 #include <unistd.h>
 #include <errno.h>
 #include <string.h>
+#include <map>
+#include <openssl/evp.h>
+#include "MyThread.h"
 
 using namespace std;
 
@@ -17,6 +19,11 @@ using namespace std;
 #define SECOND 1000000
 #define QUEUE_LIMIT 5
 #define RETRY_COUNT 5
+
+#define M 160	//number of bits
+#define M1 161	// Array size (need one more for '\0')
+#define HASH_BYTES 20
+#define HASH_HEX_BITS 41
 
 //----------Globals---------
 char ui_data[1024];
@@ -27,8 +34,15 @@ char* ip2Join; //used by client to join the server
 
 struct Node {
 	Node* predecessor;
-
 };
+
+struct cmp_key { // comparator used for identifying keys
+	bool operator()(char *first, char *second) {
+		return memcmp(first, second, sizeof(first)) < 0;
+	}
+};
+
+typedef map<char*, char*, cmp_key> hashmap;
 
 //****************Function Declarations*******************
 //-------Helper Functions----------
@@ -46,8 +60,20 @@ void helperPort();
 void helperCreate(bool created, bool & joined);
 void helperJoin(bool joined);
 
+void insertInMap(hashmap* myMap, char *hexHashKey, char *data);
+bool isPresentInMap(hashmap myMap, char *key);
+char* getFromMap(hashmap myMap, char *key);
+void printHashKey(unsigned char* key, int len);
+void getHashInHex(unsigned char* key, char* tempValue, int len);
+int convert(char item);
+void hexAddition(char* hexOne, char* hexTwo, char* hexSum, int len);
+unsigned int hash(const char *mode, const char* dataToHash, size_t dataSize,
+		unsigned char* outHashed);
+unsigned int hashToHex(const char* dataToHash, char* hashkeyhex,
+		size_t dataSize);
+
 //-----TCP Functions-------
-void UI();
+void userInput();
 void server();
 void client();
 
@@ -281,8 +307,111 @@ void helperJoin(char* joinCmd, bool joined) {
 	}
 }
 
+//hash related function
+int convert(char item) {
+	switch (item) {
+	case 'a':
+		return 10;
+		break;
+	case 'b':
+		return 11;
+		break;
+	case 'c':
+		return 12;
+		break;
+	case 'd':
+		return 13;
+		break;
+	case 'e':
+		return 14;
+		break;
+	case 'f':
+		return 15;
+		break;
+	}
+	return (int) (item - 48);
+}
+
+//Used to insert entries in fingerTable
+void insertInMap(hashmap* myMap, char *hexHashKey, char *data) {
+	(*myMap).insert(hashmap::value_type(hexHashKey, data));
+}
+
+bool isPresentInMap(hashmap myMap, char *key) {
+	hashmap::iterator iter = myMap.find(key);
+	if (iter != myMap.end()) {
+		return true;
+	}
+	return false;
+}
+
+//use this function to getFromMap only if 'isPresentInMap == true'
+char* getFromMap(hashmap myMap, char *key) {
+	hashmap::iterator iter = myMap.find(key);
+	return (*iter).second;
+}
+
+//prints the hash key in readable format, (requires len)
+void printHashKey(unsigned char* key, int len) {
+	for (int i = 0; i < len; i++)
+		printf("%02x", key[i]);
+
+}
+
+//adds two hashes in hex and stores result in third
+void hexAddition(char* hexOne, char* hexTwo, char* hexSum, int len) {
+	char hexArr[] = { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a',
+			'b', 'c', 'd', 'e', 'f' };
+	int carry = 0;
+	int temp, i;
+	for (i = len - 1; i >= 0; i--) {
+		// convert to decimal and add both array values
+		temp = convert(hexOne[i]) + convert(hexTwo[i]) + carry;
+		// add values and if they are greater than F add 1 to next value
+		carry = temp / 16;
+		temp %= 16;
+		hexSum[i] = hexArr[temp];
+	}
+	hexSum[len + 1] = '\0';
+}
+
+//hash of the given data in given mode, hash is stored in outHash
+unsigned int hash(const char *mode, const char* dataToHash,
+		unsigned char* outHash) {
+	unsigned int md_len = -1;
+	size_t dataSize = strlen(dataToHash);
+	OpenSSL_add_all_digests();
+	const EVP_MD *md = EVP_get_digestbyname(mode);
+	if (NULL != md) {
+		EVP_MD_CTX mdctx;
+		EVP_MD_CTX_init(&mdctx);
+		EVP_DigestInit_ex(&mdctx, md, NULL);
+		EVP_DigestUpdate(&mdctx, dataToHash, dataSize);
+		EVP_DigestFinal_ex(&mdctx, outHash, &md_len);
+		EVP_MD_CTX_cleanup(&mdctx);
+	}
+	return md_len;
+}
+
+unsigned int data2hexHash(const char* dataToHash, char* hexHash) {
+	unsigned char outHash[HASH_BYTES];
+
+	int len = hash("SHA1", dataToHash, outHash);
+	if (len == -1) {
+		return len;
+	}
+	getHashInHex(outHash, hexHash, HASH_BYTES);
+	return strlen(hexHash);
+}
+
+//convert from unsigned char* 20 bytes to char* 40 hex digits
+void getHashInHex(unsigned char* key, char* tempValue, int len) {
+	for (int i = 0; i < len; ++i)
+		sprintf(tempValue + 2 * i, "%02x", (unsigned char) key[i]);
+}
+
 //-----TCP Functions-------
-void UI() {
+void userInput() {
 	int created = false;
 	int joined = false;
 
@@ -417,7 +546,8 @@ void client() {
 
 		//trying again assuming the server is busy
 		retriedCount++;
-		cout << "server busy --- retrying(" << retriedCount << "/" << RETRY_COUNT << ")" << endl;
+		cout << "server busy --- retrying(" << retriedCount << "/"
+				<< RETRY_COUNT << ")" << endl;
 		sleep(1);
 		if (retriedCount == RETRY_COUNT) {
 			cout
@@ -463,11 +593,9 @@ void client() {
 	}
 	cout << "Client end! Server sent to bug off. Or client ran away!" << endl;
 }
-/*
 
 int main() {
-	create(UI);
+	create(userInput);
 	start();
 	return 0;
 }
-*/
