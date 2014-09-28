@@ -15,6 +15,7 @@
 #include "MyThread.h"
 #include "MyHash.h"
 #include "MyString.h"
+#include "MyHelper.h"
 
 using namespace std;
 
@@ -23,7 +24,6 @@ using namespace std;
 #define QUEUE_LIMIT 5
 #define RETRY_COUNT 5
 
-#define M 160	//number of bits
 //----------Globals---------
 char ui_data[1024];
 char server_send_data[1024], server_recv_data[1024];
@@ -36,40 +36,10 @@ char* ip2Join; //used by client to join the server
 int created = false;
 int joined = false;
 
-struct nodeHelper {
-	char nodeKey[HASH_HEX_BITS];
-	char ip[IP_SIZE];
-	unsigned int port;
-	char ipWithPort[IP_SIZE];
-};
-
-struct Node {
-	nodeHelper* self;
-	nodeHelper* predecessor;
-	nodeHelper* successor;
-
-	char fingerStart[M][HASH_HEX_BITS];
-	nodeHelper* fingerNode[M];
-	map<const char*, const char*, cmp_key> keyMap;
-};
-
 Node* selfNode = new Node;
 
 //****************Function Declarations*******************
 //-------Helper Functions----------
-void joinIpWithPort(char* ip, unsigned int port, char* ipWithPort);
-
-char* fetchAddress(char* cmd, int pos);
-unsigned int fetchPortNumber(char* string, int pos);
-
-bool isValidAddress(char* addr);
-bool isValidPort(unsigned int port);
-
-void printNotInNetworkErrorMessage();
-bool checkIfPartOfNw();
-
-void helperHelpNewCmd();
-
 void helperHelp();
 void helperPort(char* portCmd);
 void helperCreate();
@@ -86,9 +56,9 @@ void helperDumpAddr();
 void helperDumpAll();
 
 void populateFingerTableSelf();
-void printAllFingerTable();
-
 void fillNodeEntries(struct sockaddr_in server_addr);
+
+void askSuccForFinger();
 
 //-----TCP Functions-------
 void userInput();
@@ -102,19 +72,6 @@ nodeHelper* closest_preceding_finger(char key[HASH_HEX_BITS]);
 
 //****************Function Definitions*******************
 //-------Helper Functions----------
-
-void joinIpWithPort(char* ip, unsigned int port, char* ipWithPort) {
-	char portChar[10];
-	intToChar(port, portChar);
-	strcpy(ipWithPort, ip);
-	strcat(ipWithPort, ":");
-	strcat(ipWithPort, portChar);
-}
-
-void helperHelpNewCmd() {
-	cout << endl;
-	tab(1);
-}
 
 void helperHelp() {
 	cout << "Commands supported: " << endl;
@@ -198,43 +155,6 @@ void helperHelp() {
 	cout << endl;
 }
 
-char* fetchAddress(char* cmd, int pos) {
-	char* addrWithPort = substring(cmd, pos, strlen(cmd) - pos);
-	if (!isValidAddress(addrWithPort)) {
-		cout << "fetchAddress: Address not valid" << endl;
-		return NULL;
-	}
-	char* addr = substring(addrWithPort, 0, indexOf(addrWithPort, ':'));
-	return addr;
-}
-
-bool isValidAddress(char* addr) {
-	int dotCount = countOccurence(addr, '.');
-	int colonCount = countOccurence(addr, ':');
-
-	if (colonCount == 1 && dotCount == 3) {
-		return true;
-	}
-	return false;
-}
-
-unsigned int fetchPortNumber(char* string, int pos) {
-	char *portNumber = substring(string, pos, strlen(string) - pos);
-	unsigned int port = atoi(portNumber);
-	if (isValidPort(port)) {
-		return port;
-	}
-	return 0;
-}
-
-bool isValidPort(unsigned int port) {
-	if (port == 0 || port > 65535) {
-		cout << "isValidPort: port invalid or reserved" << endl;
-		return false;
-	}
-	return true;
-}
-
 void helperPort(char* portCmd) {
 	server_port = fetchPortNumber(portCmd, 6);
 	if (server_port != 0) {
@@ -284,78 +204,31 @@ void helperJoin(char* joinCmd) {
 	}
 }
 
-void printNotInNetworkErrorMessage() {
-	cout << "Hey!!! I am not yet in the network, try again later" << endl;
-}
-
-bool checkIfPartOfNw() {
-	if (selfNode->self == NULL) {
-		printNotInNetworkErrorMessage();
-		return false;
-	}
-	return true;
-}
-
-void helperSuccessor() {
-	if (!checkIfPartOfNw()) {
+void helperQuit() {
+	if (!checkIfPartOfNw(selfNode)) {
 		return;
 	}
-	cout << "Successor-> " << selfNode->successor->ipWithPort << endl;
-}
-
-void helperPredecessor() {
-	if (!checkIfPartOfNw()) {
-		return;
-	}
-	cout << "Predecessor-> " << selfNode->predecessor->ipWithPort << endl;
-}
-
-void printNodeDetails(Node* node) {
-	cout << "self-> " << node->self->ipWithPort << endl;
-	cout << "Self Key-> " << node->self->nodeKey << endl;
-	cout << "Successor-> " << node->successor->ipWithPort << endl;
-	cout << "Predecessor-> " << node->predecessor->ipWithPort << endl;
-	cout << "Finger table: " << endl;
-	printAllFingerTable();
-}
-
-void helperDump() {
-	if (!checkIfPartOfNw()) {
-		return;
-	}
-	printNodeDetails(selfNode);
-}
-
-void helperDumpAll() {
-	if (!checkIfPartOfNw()) {
-		return;
-	}
+	cout << "Thanks for using chord_DHT, see you again soon :)" << endl;
+	clean(); //cleaning all the threads & exiting
 	//TO-DO: needs to be implemented
-
-	/*nodeHelper* tmpNode = new nodeHelper;
-	 strcpy(tmpNode->ip, "0.0.0.0");
-	 tmpNode->port = 5000;
-	 get_SuccFromRemoteNode(tmpNode);*/
 }
 
-void helperDumpAddr() {
-	if (!checkIfPartOfNw()) {
+void helperPut() {
+	if (!checkIfPartOfNw(selfNode)) {
 		return;
 	}
 	//TO-DO: needs to be implemented
 }
 
-void askSuccForFinger() {
-	strcat(client_send_data, selfNode->self->ipWithPort);
-	int clientThreadID = create(client);
-	client_recv_data[0] = '\0';
-	run(clientThreadID);
-	while (client_recv_data[0] == '\0')
-		; //wait until data is received
-
+void helperGet() {
+	if (!checkIfPartOfNw(selfNode)) {
+		return;
+	}
+	//TO-DO: needs to be implemented
 }
+
 void helperFinger() {
-	if (!checkIfPartOfNw()) {
+	if (!checkIfPartOfNw(selfNode)) {
 		return;
 	}
 
@@ -367,40 +240,51 @@ void helperFinger() {
 	askSuccForFinger();
 }
 
-void helperPut() {
-	if (!checkIfPartOfNw()) {
+void helperSuccessor() {
+	if (!checkIfPartOfNw(selfNode)) {
+		return;
+	}
+	cout << "Successor-> " << selfNode->successor->ipWithPort << endl;
+}
+
+void helperPredecessor() {
+	if (!checkIfPartOfNw(selfNode)) {
+		return;
+	}
+	cout << "Predecessor-> " << selfNode->predecessor->ipWithPort << endl;
+}
+
+void helperDump() {
+	if (!checkIfPartOfNw(selfNode)) {
+		return;
+	}
+	printNodeDetails(selfNode);
+	//TO-DO: needs to be implemented ::: printing keys stored
+}
+
+void helperDumpAddr() {
+	if (!checkIfPartOfNw(selfNode)) {
 		return;
 	}
 	//TO-DO: needs to be implemented
 }
 
-void helperGet() {
-	if (!checkIfPartOfNw()) {
+void helperDumpAll() {
+	if (!checkIfPartOfNw(selfNode)) {
 		return;
 	}
 	//TO-DO: needs to be implemented
-}
 
-void helperQuit() {
-	if (!checkIfPartOfNw()) {
-		return;
-	}
-	cout << "Thanks for using chord_DHT, see you again soon :)" << endl;
-	clean(); //cleaning all the threads & exiting
-	//TO-DO: needs to be implemented
+	/*nodeHelper* tmpNode = new nodeHelper;
+	 strcpy(tmpNode->ip, "0.0.0.0");
+	 tmpNode->port = 5000;
+	 get_SuccFromRemoteNode(tmpNode);*/
 }
 
 //populates finger table with all the self entries - only node in the network
 void populateFingerTableSelf() {
 	for (int i = 0; i < M; i++) {
 		selfNode->fingerNode[i] = selfNode->self;
-	}
-}
-
-void printAllFingerTable() {
-	for (int i = 0; i < M; i++) {
-		cout << "start: " << selfNode-> fingerStart[i] << ", ";
-		cout << "node: " << selfNode-> fingerNode[i]->nodeKey << endl;
 	}
 }
 
@@ -436,6 +320,15 @@ void fillNodeEntries(struct sockaddr_in server_addr) {
 		strcpy(selfNode->fingerStart[i], hexVal);
 	}
 	populateFingerTableSelf();
+}
+
+void askSuccForFinger() {
+	strcat(client_send_data, selfNode->self->ipWithPort);
+	int clientThreadID = create(client);
+	client_recv_data[0] = '\0';
+	run(clientThreadID);
+	while (client_recv_data[0] == '\0')
+		; //wait until data is received
 }
 
 //-----TCP Functions-------
