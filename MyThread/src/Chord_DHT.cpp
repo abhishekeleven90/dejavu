@@ -22,6 +22,7 @@ using namespace std;
 //----------Constants---------
 #define SECOND 1000000
 #define QUEUE_LIMIT 5
+#define DATA_SIZE 16384
 
 #define msgDump 'd'
 #define msgQuit 'q'
@@ -32,8 +33,8 @@ using namespace std;
 
 //----------Globals---------
 char ui_data[1024];
-char server_send_data[1024], server_recv_data[1024];
-char client_send_data[1024], client_recv_data[1024];
+char server_send_data[DATA_SIZE], server_recv_data[DATA_SIZE];
+char client_send_data[DATA_SIZE], client_recv_data[DATA_SIZE];
 
 unsigned int server_port = 0;
 unsigned int remote_port = 0; // port with which to connect to server
@@ -64,7 +65,7 @@ void helperFinger();
 void helperSuccessor();
 void helperPredecessor();
 void helperDump();
-void helperDumpAddr();
+void helperDumpAddr(char* dumpAddrCmd);
 void helperDumpAll();
 
 void populateFingerTableSelf();
@@ -322,15 +323,48 @@ void helperDump() {
 	if (!checkIfPartOfNw(selfNode)) {
 		return;
 	}
+
 	printNodeDetails(selfNode);
 	//TO-DO: needs to be implemented ::: printing keys stored
 }
 
-void helperDumpAddr() {
+void helperDumpAddr(char* dumpAddrCmd) {
 	if (!checkIfPartOfNw(selfNode)) {
 		return;
 	}
-	//TO-DO: needs to be implemented
+
+	char* addr = fetchAddress(dumpAddrCmd, 10);
+	if (addr == NULL) {
+		return;
+	}
+	unsigned int port = fetchPortNumber(dumpAddrCmd,
+			indexOf(dumpAddrCmd, ':') + 2);
+
+	if (port == 0) {
+		//Invalid portNumber
+		return;
+	}
+
+	ip2Join = addr;
+	remote_port = port;
+
+	client_send_data[0] = 'd';
+	client_send_data[1] = ':';
+	client_send_data[2] = '\0';
+	int clientThreadID = create(client);
+
+	retry_count = 5; //Modifying the retry count assuming server IP may be incorrect
+	runClientAndWaitForResult(clientThreadID);
+	retry_count = 9999; //Modifying the retry count for all the future connections
+
+	if (client_recv_data[0] == 'x') { //Server busy or does not exist
+		return;
+	}
+
+	cout << "Dump Received" << endl;
+	cout << client_recv_data << endl; //TO-DO: remove
+
+	//split()
 }
 
 void helperDumpAll() {
@@ -338,8 +372,6 @@ void helperDumpAll() {
 		return;
 	}
 	//TO-DO: needs to be implemented
-
-	processGetDump();
 }
 
 //populates finger table with all the self entries - only node in the network
@@ -407,7 +439,7 @@ void processFinger(char *addrs) {
 	if (strcmp(startAddr, selfNode->self->ipWithPort) == 0) { // checking if I am the starting node
 		cout << "Got all the fingers, printing now: " << endl;
 		int occ = countOccurence(addrs, ',') + 1;
-		char addressArr[occ][IP_SIZE];
+		char addressArr[occ][M];
 		split(addrs, ',', addressArr);
 		for (int i = 0; i < occ; i++) {
 			cout << i << " -> " << addressArr[i] << endl;
@@ -451,9 +483,6 @@ void processGetDump() {
 		strcat(server_send_data, selfNode->fingerNode[i]->ipWithPort);
 		strcat(server_send_data, ",");
 	}
-
-	cout << "here" << endl;
-	//TO-DO::: more to be implemented
 }
 
 //-----TCP Functions-------
@@ -513,7 +542,7 @@ void userInput() {
 		}
 
 		else if (strcmp(cmdType, "dumpaddr") == 0) {
-			helperDumpAddr();
+			helperDumpAddr(ui_data);
 		}
 
 		else if (strcmp(cmdType, "dumpall") == 0) {
@@ -580,7 +609,7 @@ void server() {
 				inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
 
 		cout << "closing the connection after communicating" << endl;
-		bytes_received = recv(connected, server_recv_data, 1024, 0);
+		bytes_received = recv(connected, server_recv_data, DATA_SIZE, 0);
 		cout << "Data received from client" << endl;
 		server_recv_data[bytes_received] = '\0';
 
@@ -665,7 +694,7 @@ void client() {
 
 	send(sock, client_send_data, strlen(client_send_data), 0);
 
-	bytes_recieved = recv(sock, client_recv_data, 1024, 0);
+	bytes_recieved = recv(sock, client_recv_data, DATA_SIZE, 0);
 	cout << "Data successfully received" << endl;
 	client_recv_data[bytes_recieved] = '\0';
 	close(sock);

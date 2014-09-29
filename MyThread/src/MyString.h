@@ -63,7 +63,7 @@ int countOccurence(char* string, char splitter) {
 	return count;
 }
 
-void split(char* string, char splitter, char splittedArr[][IP_SIZE]) {
+void split(char* string, char splitter, char splittedArr[][160]) {
 	int len = strlen(string);
 	char tmp[len];
 	int j = 0; //pointer for tmp string
