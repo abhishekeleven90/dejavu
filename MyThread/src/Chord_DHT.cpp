@@ -24,6 +24,7 @@ using namespace std;
 #define QUEUE_LIMIT 5
 #define DATA_SIZE 16384
 
+#define msgJoin 'j'
 #define msgDump 'd'
 #define msgQuit 'q'
 #define msgNodeSucc 's'
@@ -46,9 +47,11 @@ char* ip2Join; //used by client to join the server
 int serverThreadId;
 int serverSock;
 
-int created = false;
-int joined = false;
+int isCreated = false;
+int isJoined = false;
 int retry_count = 5;
+
+int isFirstJoin = true;
 
 Node* selfNode = new Node;
 
@@ -85,12 +88,15 @@ void processChangePred(char *addr);
 void processKeySucc(char *keyToSearch);
 void processGetDump();
 
+void changeSuccAndFixFirstFinger(nodeHelper* succ);
+
 //-----TCP Functions-------
 void userInput();
 void server();
 void client();
 
 //-----CHORD Functions-------
+void fixFingers();
 nodeHelper* get_SuccFromRemoteNode(nodeHelper* remoteNode);
 nodeHelper* get_PredFromRemoteNode(nodeHelper* remoteNode);
 void changeSuccOfRemoteNodeToMyself(nodeHelper* remoteNode);
@@ -210,13 +216,13 @@ void helperPort(char* portCmd) {
 
 void helperCreate() {
 	//create a listening socket here
-	if (created) {
+	if (isCreated) {
 		cout << "Already in a network, server thread running" << endl;
 		return;
 	}
 
-	created = true;
-	joined = true;
+	isCreated = true;
+	isJoined = true;
 	serverThreadId = create(server);
 	run(serverThreadId);
 }
@@ -240,7 +246,7 @@ void helperJoin(char* joinCmd) {
 	joinIpWithPort(ip2Join, remote_port, remoteIpWithPort);
 	nodeHelper* remoteNodeHelper = convertToNodeHelper(remoteIpWithPort);
 
-	if (joined) {
+	if (isJoined) {
 		cout << "Already in a network and joined, joined thread running"
 				<< endl;
 		return;
@@ -250,7 +256,7 @@ void helperJoin(char* joinCmd) {
 	helperCreate();
 
 	//Making the connection
-	client_send_data[0] = 'q';
+	client_send_data[0] = 'j';
 	client_send_data[1] = ':';
 	client_send_data[2] = '\0';
 	int clientThreadID = create(client);
@@ -258,8 +264,8 @@ void helperJoin(char* joinCmd) {
 	runClientAndWaitForResult(clientThreadID);
 
 	if (client_recv_data[0] == 'x') {
-		joined = false;
-		created = false;
+		isJoined = false;
+		isCreated = false;
 		deleteThread(serverThreadId);
 		selfNode->self = NULL;
 		close(serverSock);
@@ -271,8 +277,8 @@ void helperJoin(char* joinCmd) {
 	retry_count = 9999; //Modifying the retry count for all the future connections
 
 	cout << "Asking the known remote node for my actual successor" << endl;
-	selfNode->successor = getKeySuccFromRemoteNode(remoteNodeHelper,
-			selfNode->self->nodeKey);
+	changeSuccAndFixFirstFinger(
+			getKeySuccFromRemoteNode(remoteNodeHelper, selfNode->self->nodeKey));
 	cout << "My actual successor is now: " << selfNode->successor->ipWithPort
 			<< endl;
 	selfNode->predecessor = get_PredFromRemoteNode(selfNode->successor);
@@ -282,6 +288,9 @@ void helperJoin(char* joinCmd) {
 	cout << "changing succ.pred & pred.succ to me" << endl;
 	changeSuccOfRemoteNodeToMyself(selfNode->predecessor);
 	changePredOfRemoteNodeToMyself(selfNode->successor);
+
+	int fixFingersID = create(fixFingers);
+	run(fixFingersID);
 }
 
 void helperQuit() {
@@ -442,6 +451,17 @@ void processQuit() {
 	server_send_data[1] = '\0';
 }
 
+void processJoin() {
+	cout << "Client wants to join" << endl;
+	if (isFirstJoin) {
+		isFirstJoin = false;
+		int fixFingersID = create(fixFingers);
+		run(fixFingersID);
+	}
+	server_send_data[0] = 'q';
+	server_send_data[1] = '\0';
+}
+
 void processSucc() {
 	cout << "client wants my successor details" << endl;
 	strcpy(server_send_data, selfNode->successor->ipWithPort);
@@ -477,7 +497,7 @@ void processFinger(char *data) {
 void processChangeSucc(char *addr) {
 	cout << "client wants to change my succ to: " << addr << endl;
 
-	selfNode->successor = convertToNodeHelper(addr);
+	changeSuccAndFixFirstFinger(convertToNodeHelper(addr));
 
 	server_send_data[0] = 'q';
 	server_send_data[1] = '\0';
@@ -521,6 +541,11 @@ void processGetDump() {
 		strcat(server_send_data, selfNode->fingerNode[i]->ipWithPort);
 		strcat(server_send_data, ",");
 	}
+}
+
+void changeSuccAndFixFirstFinger(nodeHelper* succ) {
+	selfNode->successor = succ;
+	selfNode->fingerNode[0] = succ;
 }
 
 //-----TCP Functions-------
@@ -658,6 +683,10 @@ void server() {
 			processQuit();
 		}
 
+		else if (strcmp(type, "j:") == 0) {
+			processJoin();
+		}
+
 		else if (strcmp(type, "s:") == 0) {
 			processSucc();
 		}
@@ -751,6 +780,35 @@ void client() {
 }
 
 //-----------CHORD FUNCTIONS-------
+void fixFingers() {
+	int fixFingerIndex = 1;
+
+	while (true) {
+		if (fixFingerIndex > M - 1) {
+			fixFingerIndex = 1;
+		}
+
+		char* key = selfNode->fingerStart[fixFingerIndex];
+		char* me = selfNode->self->nodeKey;
+		char* succKey = selfNode->successor->nodeKey;
+		char* predKey = selfNode->successor->nodeKey;
+
+		if (strcmp(key, succKey) == 0 || keyBelongCheck(me, succKey, key)) {
+			selfNode->fingerNode[fixFingerIndex] = selfNode->successor;
+		}
+
+		else if (strcmp(key, me) == 0 || keyBelongCheck(predKey, me, key)) {
+			selfNode->fingerNode[fixFingerIndex] = selfNode->self;
+		}
+
+		else {
+			selfNode->fingerNode[fixFingerIndex] = find_successor(key);
+		}
+
+		fixFingerIndex++;
+	}
+}
+
 nodeHelper* get_SuccFromRemoteNode(nodeHelper* remoteNode) {
 	ip2Join = remoteNode->ip;
 	remote_port = remoteNode->port;
