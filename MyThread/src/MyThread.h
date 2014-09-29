@@ -47,7 +47,7 @@ address_t translate_address(address_t addr)
 
 //----------Constants---------
 #define TQ 1 //Time Quantum for round-robin scheduling
-#define STACK_SIZE 30000
+#define STACK_SIZE 40000
 #define N 50 //Number of max threads allowed
 //----------Globals---------
 enum State {

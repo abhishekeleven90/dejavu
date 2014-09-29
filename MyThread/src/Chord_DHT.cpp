@@ -42,7 +42,7 @@ char client_send_data[DATA_SIZE], client_recv_data[DATA_SIZE];
 
 unsigned int server_port = 0;
 unsigned int remote_port = 0; // port with which to connect to server
-char* ip2Join; //used by client to join the server
+char ip2Join[IP_SIZE]; //used by client to join the server
 
 int serverThreadId;
 int serverSock;
@@ -239,7 +239,7 @@ void helperJoin(char* joinCmd) {
 		return;
 	}
 
-	ip2Join = addr;
+	strcpy(ip2Join, addr);
 	remote_port = port;
 
 	char remoteIpWithPort[IP_SIZE];
@@ -321,9 +321,6 @@ void helperFinger() {
 		return;
 	}
 
-	ip2Join = selfNode->successor->ip;
-	remote_port = selfNode->successor->port;
-
 	char tmp[3] = "f:";
 	strcpy(client_send_data, tmp);
 	askSuccForFinger();
@@ -369,7 +366,7 @@ void helperDumpAddr(char* dumpAddrCmd) {
 		return;
 	}
 
-	ip2Join = addr;
+	strcpy(ip2Join, addr);
 	remote_port = port;
 
 	client_send_data[0] = 'd';
@@ -440,7 +437,13 @@ void fillNodeEntries(struct sockaddr_in server_addr) {
 }
 
 void askSuccForFinger() {
+	strcpy(ip2Join, selfNode->successor->ip);
+	remote_port = selfNode->successor->port;
+
 	strcat(client_send_data, selfNode->self->ipWithPort);
+	strcat(client_send_data, ",");
+	cout << "Inside askSuccForFinger: clientsendData - " << client_send_data
+			<< endl;
 	int clientThreadID = create(client);
 	runClientAndWaitForResult(clientThreadID);
 }
@@ -473,7 +476,8 @@ void processPred() {
 }
 
 void processFinger(char *data) {
-	char *startAddr = substring(data, 0, indexOf(data, ',') + 1);
+	cout << data << endl;
+	char *startAddr = substring(data, 0, indexOf(data, ','));
 	cout << startAddr << endl; //TO-DO : remove the cout -- keep it until finger fully tested
 	cout << "client wants to find the fingers" << endl;
 	if (strcmp(startAddr, selfNode->self->ipWithPort) == 0) { // checking if I am the starting node
@@ -481,13 +485,12 @@ void processFinger(char *data) {
 		int occ = countOccurence(data, ',') + 1;
 		char addressArr[occ][M];
 		split(data, ',', addressArr);
-		for (int i = 0; i < occ; i++) {
+		for (int i = 0; i < occ - 1; i++) {
 			cout << i << " -> " << addressArr[i] << endl;
 		}
 	} else {
 		//TO-DO : needs to be tested
 		strcpy(client_send_data, server_recv_data);
-		strcat(client_send_data, ",");
 		askSuccForFinger();
 	}
 	server_send_data[0] = 'q';
@@ -726,6 +729,7 @@ void server() {
 bool connectToServer(int & sock) {
 	struct hostent *host;
 	struct sockaddr_in server_addr;
+	cout << "Inside connect to server: " << ip2Join << endl;
 	host = gethostbyname(ip2Join);
 	cout << "creating client socket" << endl;
 	if ((sock = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
@@ -802,6 +806,8 @@ void fixFingers() {
 		}
 
 		else {
+			cout << "Inside fixFingers: finding successor for: "
+					<< fixFingerIndex << endl;
 			selfNode->fingerNode[fixFingerIndex] = find_successor(key);
 		}
 
@@ -810,7 +816,7 @@ void fixFingers() {
 }
 
 nodeHelper* get_SuccFromRemoteNode(nodeHelper* remoteNode) {
-	ip2Join = remoteNode->ip;
+	strcpy(ip2Join, remoteNode->ip);
 	remote_port = remoteNode->port;
 	client_send_data[0] = 's';
 	client_send_data[1] = ':';
@@ -822,7 +828,7 @@ nodeHelper* get_SuccFromRemoteNode(nodeHelper* remoteNode) {
 }
 
 nodeHelper* get_PredFromRemoteNode(nodeHelper* remoteNode) {
-	ip2Join = remoteNode->ip;
+	strcpy(ip2Join, remoteNode->ip);
 	remote_port = remoteNode->port;
 	client_send_data[0] = 'p';
 	client_send_data[1] = ':';
@@ -835,7 +841,7 @@ nodeHelper* get_PredFromRemoteNode(nodeHelper* remoteNode) {
 }
 
 void changeSuccOfRemoteNodeToMyself(nodeHelper* remoteNode) {
-	ip2Join = remoteNode->ip;
+	strcpy(ip2Join, remoteNode->ip);
 	remote_port = remoteNode->port;
 
 	char tmp[3] = "a:";
@@ -848,7 +854,7 @@ void changeSuccOfRemoteNodeToMyself(nodeHelper* remoteNode) {
 }
 
 void changePredOfRemoteNodeToMyself(nodeHelper* remoteNode) {
-	ip2Join = remoteNode->ip;
+	strcpy(ip2Join, remoteNode->ip);
 	remote_port = remoteNode->port;
 
 	char tmp[3] = "b:";
@@ -888,7 +894,7 @@ nodeHelper* closest_preceding_finger(char key[]) {
 
 nodeHelper* getKeySuccFromRemoteNode(nodeHelper* remoteNode, char key[]) {
 
-	ip2Join = remoteNode->ip;
+	strcpy(ip2Join, remoteNode->ip);
 	remote_port = remoteNode->port;
 	char tmp[] = "k:";
 	strcpy(client_send_data, tmp); //we will be acting as client to send data

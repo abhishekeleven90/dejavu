@@ -79,7 +79,6 @@ void split(char* string, char splitter, char splittedArr[][160]) {
 			k++;
 		}
 	}
-	strcpy(splittedArr[k], tmp);
 }
 
 int indexOf(char* string, char of) {
