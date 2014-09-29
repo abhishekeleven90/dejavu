@@ -1,6 +1,5 @@
 //----------Constants---------
 #define M 160	//number of bits
-
 //----------Globals---------
 struct nodeHelper {
 	char nodeKey[HASH_HEX_BITS];
@@ -30,6 +29,7 @@ bool isValidPort(unsigned int port);
 bool checkIfPartOfNw(Node* node);
 
 void printNotInNetworkErrorMessage();
+void printInNetworkErrorMessage();
 void printAllFingerTable(Node* node);
 void printNodeDetails(Node* node);
 
@@ -89,8 +89,20 @@ bool checkIfPartOfNw(Node* node) {
 	return true;
 }
 
+bool checkIfNotPartOfNw(Node* node) {
+	if (node->self != NULL) {
+		printInNetworkErrorMessage();
+		return false;
+	}
+	return true;
+}
+
 void printNotInNetworkErrorMessage() {
 	cout << "Hey!!! I am not yet in the network, try again later" << endl;
+}
+
+void printInNetworkErrorMessage() {
+	cout << "Hey!!! I am in the network, try again later" << endl;
 }
 
 void printAllFingerTable(Node* node) {
