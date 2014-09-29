@@ -43,6 +43,8 @@ Node* selfNode = new Node;
 
 //****************Function Declarations*******************
 //-------Helper Functions----------
+void runClientAndWaitForResult(int clientThreadID);
+
 void helperHelp();
 void helperPort(char* portCmd);
 void helperCreate();
@@ -84,6 +86,14 @@ void processKeySucc(char *keyToSearch);
 
 //****************Function Definitions*******************
 //-------Helper Functions----------
+
+void runClientAndWaitForResult(int clientThreadID) {
+	client_recv_data[0] = '\0';
+	run(clientThreadID);
+	while (client_recv_data[0] == '\0')
+		; //wait until data is received
+
+}
 
 void helperHelp() {
 	cout << "Commands supported: " << endl;
@@ -227,10 +237,7 @@ void helperJoin(char* joinCmd) {
 	client_send_data[2] = '\0';
 	int clientThreadID = create(client);
 
-	client_recv_data[0] = '\0';
-	run(clientThreadID);
-	while (client_recv_data[0] == '\0')
-		; //wait until data is received
+	runClientAndWaitForResult(clientThreadID);
 
 	if (client_recv_data[0] == 'x') {
 		joined = false;
@@ -374,10 +381,7 @@ void fillNodeEntries(struct sockaddr_in server_addr) {
 void askSuccForFinger() {
 	strcat(client_send_data, selfNode->self->ipWithPort);
 	int clientThreadID = create(client);
-	client_recv_data[0] = '\0';
-	run(clientThreadID);
-	while (client_recv_data[0] == '\0')
-		; //wait until data is received
+	runClientAndWaitForResult(clientThreadID);
 }
 
 void processQuit() {
@@ -639,10 +643,7 @@ void get_SuccFromRemoteNode(nodeHelper* remoteNode) {
 	client_send_data[1] = ':';
 	client_send_data[2] = '\0';
 	int clientThreadID = create(client);
-	client_recv_data[0] = '\0';
-	run(clientThreadID);
-	while (client_recv_data[0] == '\0')
-		; //wait until data is received
+	runClientAndWaitForResult(clientThreadID);
 	cout << client_recv_data << endl;
 }
 

@@ -108,7 +108,7 @@ void printInNetworkErrorMessage() {
 void printAllFingerTable(Node* node) {
 	for (int i = 0; i < M; i++) {
 		cout << "start: " << node-> fingerStart[i] << ", ";
-		cout << "node: " << node-> fingerNode[i]->nodeKey << endl;
+		cout << "node: " << node-> fingerNode[i]->ipWithPort << endl;
 	}
 }
 
