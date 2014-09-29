@@ -125,3 +125,31 @@ unsigned int hash(const char *mode, const char* dataToHash,
 	}
 	return md_len;
 }
+
+bool keyBelongCheck(char startKey[HASH_HEX_BITS],
+		char endKey[HASH_HEX_BITS], char searchKey[HASH_HEX_BITS]) {
+	char min[] = "0000000000000000000000000000000000000000";
+	char max[] = "ffffffffffffffffffffffffffffffffffffffff";
+
+	if (strcmp(startKey, endKey) < 0) {
+		if (strcmp(searchKey, startKey) > 0 && strcmp(searchKey, endKey) < 0)
+			return true;
+		else
+			return false;
+	} else //that means either startKey==endKey or  startKey > endKey
+	{
+		bool ans1 = false;
+		bool ans2 = false;
+		//case 1
+		if (strcmp(startKey, max) < 0) {
+			if (strcmp(searchKey, startKey) > 0 && strcmp(searchKey, max) <= 0)
+				ans1 = true;
+		}
+		//case 2
+		if (strcmp(min, endKey) < 0) {
+			if (strcmp(searchKey, min) >= 0 && strcmp(searchKey, endKey) < 0)
+				ans2 = true;
+		}
+		return ans1 || ans2;
+	}
+}
