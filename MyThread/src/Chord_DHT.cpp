@@ -27,6 +27,9 @@ using namespace std;
 #define msgDump 'd'
 #define msgQuit 'q'
 #define msgNodeSucc 's'
+#define msgNodePred 'p'
+#define msgChangeSucc 'a'
+#define msgChangePred 'b'
 #define msgKeySucc 'k'
 #define msgFinger 'f'
 #define msgConnectFailed 'x'
@@ -75,7 +78,10 @@ void askSuccForFinger();
 
 void processQuit();
 void processSucc();
-void processFinger(char *addrs);
+void processPred();
+void processFinger(char *data);
+void processChangeSucc(char *addr);
+void processChangePred(char *addr);
 void processKeySucc(char *keyToSearch);
 void processGetDump();
 
@@ -85,7 +91,10 @@ void server();
 void client();
 
 //-----CHORD Functions-------
-void get_SuccFromRemoteNode(nodeHelper* remoteNode);
+nodeHelper* get_SuccFromRemoteNode(nodeHelper* remoteNode);
+nodeHelper* get_PredFromRemoteNode(nodeHelper* remoteNode);
+void changeSuccOfRemoteNodeToMyself(nodeHelper* remoteNode);
+void changePredOfRemoteNodeToMyself(nodeHelper* remoteNode);
 nodeHelper* find_successor(char key[]);
 nodeHelper* closest_preceding_finger(char key[]);
 
@@ -266,7 +275,13 @@ void helperJoin(char* joinCmd) {
 			selfNode->self->nodeKey);
 	cout << "My actual successor is now: " << selfNode->successor->ipWithPort
 			<< endl;
+	selfNode->predecessor = get_PredFromRemoteNode(selfNode->successor);
+	cout << "My actual predecessor is now: "
+			<< selfNode->predecessor->ipWithPort << endl;
 
+	cout << "changing succ.pred & pred.succ to me" << endl;
+	changeSuccOfRemoteNodeToMyself(selfNode->predecessor);
+	changePredOfRemoteNodeToMyself(selfNode->successor);
 }
 
 void helperQuit() {
@@ -432,15 +447,20 @@ void processSucc() {
 	strcpy(server_send_data, selfNode->successor->ipWithPort);
 }
 
-void processFinger(char *addrs) {
-	char *startAddr = substring(addrs, 0, indexOf(addrs, ',') + 1);
+void processPred() {
+	cout << "client wants my predecessor details" << endl;
+	strcpy(server_send_data, selfNode->predecessor->ipWithPort);
+}
+
+void processFinger(char *data) {
+	char *startAddr = substring(data, 0, indexOf(data, ',') + 1);
 	cout << startAddr << endl; //TO-DO : remove the cout -- keep it until finger fully tested
 	cout << "client wants to find the fingers" << endl;
 	if (strcmp(startAddr, selfNode->self->ipWithPort) == 0) { // checking if I am the starting node
 		cout << "Got all the fingers, printing now: " << endl;
-		int occ = countOccurence(addrs, ',') + 1;
+		int occ = countOccurence(data, ',') + 1;
 		char addressArr[occ][M];
-		split(addrs, ',', addressArr);
+		split(data, ',', addressArr);
 		for (int i = 0; i < occ; i++) {
 			cout << i << " -> " << addressArr[i] << endl;
 		}
@@ -450,6 +470,24 @@ void processFinger(char *addrs) {
 		strcat(client_send_data, ",");
 		askSuccForFinger();
 	}
+	server_send_data[0] = 'q';
+	server_send_data[1] = '\0';
+}
+
+void processChangeSucc(char *addr) {
+	cout << "client wants to change my succ to: " << addr << endl;
+
+	selfNode->successor = convertToNodeHelper(addr);
+
+	server_send_data[0] = 'q';
+	server_send_data[1] = '\0';
+}
+
+void processChangePred(char *addr) {
+	cout << "client wants to change my pred to: " << addr << endl;
+
+	selfNode->predecessor = convertToNodeHelper(addr);
+
 	server_send_data[0] = 'q';
 	server_send_data[1] = '\0';
 }
@@ -624,6 +662,10 @@ void server() {
 			processSucc();
 		}
 
+		else if (strcmp(type, "p:") == 0) {
+			processPred();
+		}
+
 		else if (strcmp(type, "f:") == 0) {
 			processFinger(data);
 		}
@@ -634,6 +676,14 @@ void server() {
 
 		else if (strcmp(type, "d:") == 0) {
 			processGetDump();
+		}
+
+		else if (strcmp(type, "a:") == 0) {
+			processChangeSucc(data);
+		}
+
+		else if (strcmp(type, "b:") == 0) {
+			processChangePred(data);
 		}
 
 		send(connected, server_send_data, strlen(server_send_data), 0);
@@ -701,7 +751,7 @@ void client() {
 }
 
 //-----------CHORD FUNCTIONS-------
-void get_SuccFromRemoteNode(nodeHelper* remoteNode) {
+nodeHelper* get_SuccFromRemoteNode(nodeHelper* remoteNode) {
 	ip2Join = remoteNode->ip;
 	remote_port = remoteNode->port;
 	client_send_data[0] = 's';
@@ -709,14 +759,54 @@ void get_SuccFromRemoteNode(nodeHelper* remoteNode) {
 	client_send_data[2] = '\0';
 	int clientThreadID = create(client);
 	runClientAndWaitForResult(clientThreadID);
-	cout << client_recv_data << endl;
+	cout << "Got the successor from remote node: " << client_recv_data << endl;
+	return convertToNodeHelper(client_recv_data);
+}
+
+nodeHelper* get_PredFromRemoteNode(nodeHelper* remoteNode) {
+	ip2Join = remoteNode->ip;
+	remote_port = remoteNode->port;
+	client_send_data[0] = 'p';
+	client_send_data[1] = ':';
+	client_send_data[2] = '\0';
+	int clientThreadID = create(client);
+	runClientAndWaitForResult(clientThreadID);
+	cout << "Got the predecessor from remote node: " << client_recv_data
+			<< endl;
+	return convertToNodeHelper(client_recv_data);
+}
+
+void changeSuccOfRemoteNodeToMyself(nodeHelper* remoteNode) {
+	ip2Join = remoteNode->ip;
+	remote_port = remoteNode->port;
+
+	char tmp[3] = "a:";
+	strcpy(client_send_data, tmp);
+	strcat(client_send_data, selfNode->self->ipWithPort);
+
+	int clientThreadID = create(client);
+	runClientAndWaitForResult(clientThreadID);
+	cout << "Changed the successor of remote node to myself" << endl;
+}
+
+void changePredOfRemoteNodeToMyself(nodeHelper* remoteNode) {
+	ip2Join = remoteNode->ip;
+	remote_port = remoteNode->port;
+
+	char tmp[3] = "b:";
+	strcpy(client_send_data, tmp);
+	strcat(client_send_data, selfNode->self->ipWithPort);
+
+	int clientThreadID = create(client);
+	runClientAndWaitForResult(clientThreadID);
+	cout << "Changed the predecessor of remote node to myself" << endl;
 }
 
 nodeHelper* find_successor(char key[]) {
 	char* nodeKey = selfNode->self->nodeKey;
 	char* succKey = selfNode->successor->nodeKey;
 
-	if (strcmp(key, nodeKey) > 0 && strcmp(key, succKey) <= 0) {
+	if (strcmp(key, succKey) == 0 || keyBelongCheck(nodeKey, succKey, key)) {
 		return selfNode->successor;
 	} else {
 		nodeHelper* closestPrecedingNode = closest_preceding_finger(key);
@@ -731,8 +821,7 @@ nodeHelper* find_successor(char key[]) {
 nodeHelper* closest_preceding_finger(char key[]) {
 	for (int i = M - 1; i >= 0; i--) {
 		char* fingerNodeId = selfNode->fingerNode[i]->nodeKey;
-		if (strcmp(fingerNodeId, selfNode->self->nodeKey) > 0 && strcmp(
-				fingerNodeId, key) < 0) {
+		if (keyBelongCheck(selfNode->self->nodeKey, key, fingerNodeId)) {
 			return selfNode->fingerNode[i];
 		}
 	}
@@ -748,10 +837,8 @@ nodeHelper* getKeySuccFromRemoteNode(nodeHelper* remoteNode, char key[]) {
 	strcat(client_send_data, key);
 	cout << "Sending this data to remote node: " << client_send_data << endl;
 	int clientThreadID = create(client);
-	client_recv_data[0] = '\0';
-	run(clientThreadID);
-	while (client_recv_data[0] == '\0')
-		; //wait until data is received
+	runClientAndWaitForResult(clientThreadID);
+
 	cout << "Data received from remote node " << client_recv_data << endl;
 	//now make a nodeHelper and return based on ipWithPort received
 	return convertToNodeHelper(client_recv_data);
@@ -776,7 +863,6 @@ nodeHelper* convertToNodeHelper(char *ipWithPort) {
 
 	return toReturn;
 }
-
 
 //-----------MAIN---------------
 
