@@ -30,7 +30,7 @@ char server_send_data[1024], server_recv_data[1024];
 char client_send_data[1024], client_recv_data[1024];
 
 unsigned int server_port = 0;
-unsigned int client_port = 0; // port with which to connect to server
+unsigned int remote_port = 0; // port with which to connect to server
 char* ip2Join; //used by client to join the server
 
 int created = false;
@@ -73,6 +73,12 @@ void client();
 void get_SuccFromRemoteNode(nodeHelper* remoteNode);
 nodeHelper* find_successor(char key[HASH_HEX_BITS]);
 nodeHelper* closest_preceding_finger(char key[HASH_HEX_BITS]);
+
+//latest functions TO-DO remove
+nodeHelper* convertToNodeHelper(char *ipWithPort);
+nodeHelper* getKeySuccFromRemoteNode(nodeHelper* remoteNode,
+		char key[HASH_HEX_BITS]);
+void processKeySucc(char *keyToSearch);
 
 //****************Function Definitions*******************
 //-------Helper Functions----------
@@ -193,15 +199,26 @@ void helperJoin(char* joinCmd) {
 	}
 
 	ip2Join = addr;
-	client_port = port;
+	remote_port = port;
+
+	char remoteIpWithPort[IP_SIZE];
+	joinIpWithPort(ip2Join, remote_port, remoteIpWithPort);
+	nodeHelper* remoteNodeHelper = convertToNodeHelper(remoteIpWithPort);
 
 	if (joined == false) {
-		helperCreate(); //The node needs to be created as a server as well
-		client_send_data[0] = 'q';
-		client_send_data[1] = ':';
-		client_send_data[2] = '\0';
-		int clientThreadID = create(client);
-		run(clientThreadID);
+		cout << "Creating myself!!" << endl;
+		helperCreate();
+		/*		helperCreate(); //The node needs to be created as a server as well
+		 client_send_data[0] = 'q';
+		 client_send_data[1] = ':';
+		 client_send_data[2] = '\0';
+		 int clientThreadID = create(client);
+		 run(clientThreadID);*/
+		cout << "Asking the known remote node for my actual successor" << endl;
+		selfNode->successor = getKeySuccFromRemoteNode(remoteNodeHelper,
+				selfNode->self->nodeKey);
+		cout << "My actual successor is now: "
+				<< selfNode->successor->ipWithPort << endl;
 	} else {
 		cout << "Already in a network and joined, joined thread running"
 				<< endl;
@@ -237,7 +254,7 @@ void helperFinger() {
 	}
 
 	ip2Join = selfNode->successor->ip;
-	client_port = selfNode->successor->port;
+	remote_port = selfNode->successor->port;
 
 	char tmp[3] = "f:";
 	strcpy(client_send_data, tmp);
@@ -368,6 +385,13 @@ void processFinger(char *addrs) {
 	server_send_data[1] = '\0';
 }
 
+void processKeySucc(char *keyToSearch) {
+	cout << "Client requests for finding Node successor of this key: "
+			<< keyToSearch << endl;
+	nodeHelper* toReturn = find_successor(keyToSearch);
+	strcpy(server_send_data, toReturn->ipWithPort);
+}
+
 //-----TCP Functions-------
 void userInput() {
 	while (1) {
@@ -495,7 +519,7 @@ void server() {
 		server_recv_data[bytes_received] = '\0';
 
 		char* type = substring(server_recv_data, 0, 2);
-		char* addrs = substring(server_recv_data, 3, strlen(server_recv_data));
+		char* data = substring(server_recv_data, 3, strlen(server_recv_data));
 
 		if (strcmp(type, "q:") == 0) {
 			processQuit();
@@ -506,7 +530,11 @@ void server() {
 		}
 
 		else if (strcmp(type, "f:") == 0) {
-			processFinger(addrs);
+			processFinger(data);
+		}
+
+		else if (strcmp(type, "k:") == 0) {
+			processKeySucc(data);
 		}
 
 		send(connected, server_send_data, strlen(server_send_data), 0);
@@ -528,7 +556,7 @@ bool connectToServer(int & sock) {
 	}
 	cout << "client socket created" << endl;
 	server_addr.sin_family = AF_INET;
-	server_addr.sin_port = htons(client_port);
+	server_addr.sin_port = htons(remote_port);
 	server_addr.sin_addr = *((struct in_addr *) host->h_addr);
 	bzero(&(server_addr.sin_zero), 8);
 	cout << "client will try and connect to server" << endl;
@@ -575,7 +603,7 @@ void client() {
 //-----------CHORD FUNCTIONS-------
 void get_SuccFromRemoteNode(nodeHelper* remoteNode) {
 	ip2Join = remoteNode->ip;
-	client_port = remoteNode->port;
+	remote_port = remoteNode->port;
 	client_send_data[0] = 's';
 	client_send_data[1] = ':';
 	client_send_data[2] = '\0';
@@ -597,8 +625,9 @@ nodeHelper* find_successor(char key[HASH_HEX_BITS]) {
 		nodeHelper* closestPrecedingNode = closest_preceding_finger(key);
 		if (strcmp(closestPrecedingNode->nodeKey, selfNode->self->nodeKey) == 0) {
 			return selfNode->self;
+		} else {
+			return getKeySuccFromRemoteNode(closestPrecedingNode, key);
 		}
-		//TO-DO: find successor on remote machine(closestPrecedingNode)
 	}
 }
 
@@ -611,6 +640,45 @@ nodeHelper* closest_preceding_finger(char key[HASH_HEX_BITS]) {
 		}
 	}
 	return selfNode->self;
+}
+
+nodeHelper* getKeySuccFromRemoteNode(nodeHelper* remoteNode,
+		char key[HASH_HEX_BITS]) {
+
+	ip2Join = remoteNode->ip;
+	remote_port = remoteNode->port;
+	char tmp[] = "k:";
+	strcpy(client_send_data, tmp); //we will be acting as client to send data
+	strcat(client_send_data, key);
+	cout << "Sending this data to remote node: " << client_send_data << endl;
+	int clientThreadID = create(client);
+	client_recv_data[0] = '\0';
+	run(clientThreadID);
+	while (client_recv_data[0] == '\0')
+		; //wait until data is received
+	cout << "Data received from remote node " << client_recv_data << endl;
+	//now make a nodeHelper and return based on ipWithPort received
+	return convertToNodeHelper(client_recv_data);
+
+}
+
+nodeHelper* convertToNodeHelper(char *ipWithPort) {
+
+	nodeHelper* toReturn = new nodeHelper;
+	strcpy(toReturn->ipWithPort, ipWithPort);
+	char* ipAddr = substring(ipWithPort, 0, indexOf(ipWithPort, ':'));
+	char* portString = substring(ipWithPort, indexOf(ipWithPort, ':') + 2,
+			strlen(ipWithPort));
+	unsigned int portNum = atoi(portString);
+
+	strcpy(toReturn->ip, ipAddr);
+	toReturn->port = portNum;
+
+	char hexHash[HASH_HEX_BITS];
+	data2hexHash(toReturn->ipWithPort, hexHash);
+	strcpy(toReturn->nodeKey, hexHash);
+
+	return toReturn;
 }
 
 //-----------MAIN---------------
