@@ -23,6 +23,13 @@ using namespace std;
 #define SECOND 1000000
 #define QUEUE_LIMIT 5
 
+#define msgDump 'd'
+#define msgQuit 'q'
+#define msgNodeSucc 's'
+#define msgKeySucc 'k'
+#define msgFinger 'f'
+#define msgConnectFailed 'x'
+
 //----------Globals---------
 char ui_data[1024];
 char server_send_data[1024], server_recv_data[1024];
@@ -68,6 +75,8 @@ void askSuccForFinger();
 void processQuit();
 void processSucc();
 void processFinger(char *addrs);
+void processKeySucc(char *keyToSearch);
+void processGetDump();
 
 //-----TCP Functions-------
 void userInput();
@@ -82,7 +91,6 @@ nodeHelper* closest_preceding_finger(char key[]);
 //latest functions TO-DO remove
 nodeHelper* convertToNodeHelper(char *ipWithPort);
 nodeHelper* getKeySuccFromRemoteNode(nodeHelper* remoteNode, char key[]);
-void processKeySucc(char *keyToSearch);
 
 //****************Function Definitions*******************
 //-------Helper Functions----------
@@ -331,10 +339,7 @@ void helperDumpAll() {
 	}
 	//TO-DO: needs to be implemented
 
-	/*nodeHelper* tmpNode = new nodeHelper;
-	 strcpy(tmpNode->ip, "0.0.0.0");
-	 tmpNode->port = 5000;
-	 get_SuccFromRemoteNode(tmpNode);*/
+	processGetDump();
 }
 
 //populates finger table with all the self entries - only node in the network
@@ -422,6 +427,33 @@ void processKeySucc(char *keyToSearch) {
 			<< keyToSearch << endl;
 	nodeHelper* toReturn = find_successor(keyToSearch);
 	strcpy(server_send_data, toReturn->ipWithPort);
+}
+
+void processGetDump() {
+	cout << "Client wants my dump" << endl;
+
+	strcpy(server_send_data, selfNode->self->ipWithPort);
+	strcat(server_send_data, ",");
+	strcat(server_send_data, selfNode->successor->ipWithPort);
+	strcat(server_send_data, ",");
+	strcat(server_send_data, selfNode->predecessor->ipWithPort);
+
+	strcat(server_send_data, "|");
+
+	for (int i = 0; i < M; i++) {
+		strcat(server_send_data, selfNode->fingerStart[i]);
+		strcat(server_send_data, ",");
+	}
+
+	strcat(server_send_data, "|");
+
+	for (int i = 0; i < M; i++) {
+		strcat(server_send_data, selfNode->fingerNode[i]->ipWithPort);
+		strcat(server_send_data, ",");
+	}
+
+	cout << "here" << endl;
+	//TO-DO::: more to be implemented
 }
 
 //-----TCP Functions-------
@@ -569,6 +601,10 @@ void server() {
 
 		else if (strcmp(type, "k:") == 0) {
 			processKeySucc(data);
+		}
+
+		else if (strcmp(type, "d:") == 0) {
+			processGetDump();
 		}
 
 		send(connected, server_send_data, strlen(server_send_data), 0);
