@@ -3,19 +3,19 @@
 #define HASH_HEX_BITS 41
 
 //----------Globals---------
-struct cmp_key { // comparator used for identifying keys
-	bool operator()(const char *first, const char *second) {
-		return memcmp(first, second, sizeof(first)) < 0;
+
+struct cmp_str {
+	bool operator()(char const *a, char const *b) {
+		return strcmp(a, b) < 0;
 	}
 };
 
-typedef map<const char*, const char*, cmp_key> hashmap;
-typedef map<char*, char*> keyMap;
+typedef map<char*, char*, cmp_str> keyMap;
 
 //****************Function Declarations*******************
-void insertInMap(hashmap* myMap, char *hexHashKey, const char *data);
-bool isPresentInMap(hashmap myMap, char *key);
-const char* getFromMap(hashmap myMap, const char *key);
+void insertInKeyMap(keyMap* myMap, char *hexHashKey, char *data);
+bool isPresentInKeyMap(keyMap myMap, char *key);
+char* getFromKeyMap(keyMap myMap, char *key);
 void printHashKey(unsigned char* key, int len);
 unsigned int data2hexHash(const char* dataToHash, char* hexHash);
 void getHashInHex(unsigned char* key, char* tempValue, int len);
@@ -25,21 +25,10 @@ unsigned int hash(const char *mode, const char* dataToHash,
 		unsigned char* outHash);
 
 //****************Function Definitions*******************
-//Used to insert entries in fingerTable
-void insertInMap(hashmap* myMap, char *hexHashKey, const char *data) {
-	(*myMap).insert(hashmap::value_type(hexHashKey, data));
-}
 
 void insertInKeyMap(keyMap* myMap, char *hexHashKey, char *data) {
-	(*myMap).insert(keyMap::value_type(hexHashKey, data));
-}
-
-bool isPresentInMap(hashmap myMap, char *key) {
-	hashmap::iterator iter = myMap.find(key);
-	if (iter != myMap.end()) {
-		return true;
-	}
-	return false;
+	(*myMap)[hexHashKey] = data;
+	//(*myMap).insert(keyMap::value_type(hexHashKey, data));
 }
 
 bool isPresentInKeyMap(keyMap myMap, char *key) {
@@ -51,12 +40,7 @@ bool isPresentInKeyMap(keyMap myMap, char *key) {
 }
 
 //use this function to getFromMap only if 'isPresentInMap == true'
-const char* getFromMap(hashmap myMap, const char *key) {
-	hashmap::iterator iter = myMap.find(key);
-	return (*iter).second;
-}
-
-const char* getFromKeyMap(keyMap myMap, char *key) {
+char* getFromKeyMap(keyMap myMap, char *key) {
 	keyMap::iterator iter = myMap.find(key);
 	return (*iter).second;
 }

@@ -314,58 +314,63 @@ void helperQuit() {
 }
 
 void putInMyMap(char* dataVal) {
+
 	char dataValArr[2][KILO];
 	split(dataVal, ' ', dataValArr);
 
-	char hexHashKey[HASH_HEX_BITS];
+	char* hexHashKey = (char *) malloc(sizeof(char) * 41);
+	//char hexHashKey[HASH_HEX_BITS];
 	data2hexHash(dataValArr[0], hexHashKey);
 
-	char dataForMap[KILO];
-	memset(dataForMap, '\0', KILO);
+	char* dataForMap = (char *) malloc(sizeof(char) * 1024);
+	//memset(dataForMap, '\0', KILO);
+
 	strcpy(dataForMap, dataValArr[0]);
 	strcat(dataForMap, "=>");
 	strcat(dataForMap, dataValArr[1]);
 	strcat(dataForMap, "\0");
 
+	cout << "ab: dataForMap " << dataForMap << endl;
+
 	insertInKeyMap(&selfNode->dataValMap, hexHashKey, dataForMap);
+
 }
 
-string getFromMyMap(char* data) {
+char* getFromMyMap(char* data) {
+
 	char hexHashKey[HASH_HEX_BITS];
 	data2hexHash(data, hexHashKey);
 
 	map<const char*, const char*>::iterator it;
 
-	for (map<char*, char*>::iterator it = (selfNode->dataValMap).begin(); it
-			!= (selfNode->dataValMap).end(); ++it) {
-		cout << it->first << " : " << it->second << '\n';
-	}
-
-	if (!isPresentInKeyMap(selfNode->dataValMap, hexHashKey)) {
+	if (!isPresentInKeyMap((selfNode->dataValMap), hexHashKey)) {
 		cout << "Data not found for key: " << hexHashKey << endl;
 		return NULL;
 	}
+	return getFromKeyMap(selfNode->dataValMap, hexHashKey);
 
-	string dataVal = getFromKeyMap(selfNode->dataValMap, hexHashKey);
-	return dataVal;
 }
 
 void helperPut(char* putCmd) {
 	if (!checkIfPartOfNw(selfNode)) {
 		return;
 	}
-	char dataVal[KILO];
+
+	char *dataVal = (char *) malloc(sizeof(char) * 1024);
+	char *hexHashKey = (char *) malloc(sizeof(char) * 41);
 	strcpy(dataVal, substring(putCmd, 5, strlen(putCmd) - 5));
 
 	char dataValArr[2][KILO];
 
 	split(dataVal, ' ', dataValArr);
 
-	char hexHashKey[HASH_HEX_BITS];
+	//char hexHashKey[HASH_HEX_BITS];
 	data2hexHash(dataValArr[0], hexHashKey);
+	cout << "ab: hashexkey " << hexHashKey << endl;
 
 	nodeHelper* remoteNode = find_successor(hexHashKey);
 	if (strcmp(remoteNode->nodeKey, selfNode->self->nodeKey) == 0) {
+		cout << "ab: dataval " << dataVal << endl;
 		putInMyMap(dataVal);
 	}
 
@@ -383,14 +388,14 @@ void helperPut(char* putCmd) {
 
 	cout << "Data inserted: " << dataVal << " with: " << hexHashKey << ", at: "
 			<< remoteNode->ipWithPort << endl;
+
 }
 
 void helperGet(char* getCmd) {
 	if (!checkIfPartOfNw(selfNode)) {
 		return;
 	}
-
-	string dataVal;
+	char dataVal[1024];
 
 	char data[KILO];
 	strcpy(data, substring(getCmd, 5, strlen(getCmd) - 5));
@@ -405,7 +410,7 @@ void helperGet(char* getCmd) {
 	nodeHelper* remoteNode = find_successor(hexHashKey);
 
 	if (strcmp(remoteNode->nodeKey, selfNode->self->nodeKey) == 0) {
-		dataVal = getFromMyMap(data);
+		strcpy(dataVal, getFromMyMap(data));
 	}
 
 	else {
@@ -418,8 +423,8 @@ void helperGet(char* getCmd) {
 
 		int clientThreadID = create(client);
 		runClientAndWaitForResult(clientThreadID);
-		//strcpy(dataVal, client_recv_data);
-		dataVal = client_recv_data;
+		strcpy(dataVal, client_recv_data);
+		//dataVal = client_recv_data;
 	}
 
 	cout << "Data Found: " << hexHashKey << "\t" << dataVal << endl;
@@ -750,6 +755,7 @@ void userInput() {
 
 		else if (strcmp(cmdType, "put") == 0) {
 			helperPut(ui_data);
+
 		}
 
 		else if (strcmp(cmdType, "get") == 0) {
@@ -791,7 +797,7 @@ void userInput() {
 }
 
 void server() {
-	int sock, connected, bytes_recieved, trueint = 1;
+	int sock, connected, trueint = 1;
 
 	struct sockaddr_in server_addr, client_addr;
 	unsigned int sin_size;
