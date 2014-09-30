@@ -962,6 +962,7 @@ void fixFingers() {
 
 	while (true) {
 		if (fixFingerIndex > M - 1) {
+			sleep(6);//TO-DO, may be fatal
 			fixFingerIndex = 1;
 		}
 
