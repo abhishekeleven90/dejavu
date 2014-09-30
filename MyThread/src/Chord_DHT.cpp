@@ -319,18 +319,20 @@ void putInMyMap(char* dataVal) {
 	split(dataVal, ' ', dataValArr);
 
 	char* hexHashKey = (char *) malloc(sizeof(char) * 41);
-
 	//char hexHashKey[HASH_HEX_BITS];
 	data2hexHash(dataValArr[0], hexHashKey);
 
 	char* dataForMap = (char *) malloc(sizeof(char) * 1024);
 	//memset(dataForMap, '\0', KILO);
+
 	strcpy(dataForMap, dataValArr[0]);
 	strcat(dataForMap, "=>");
 	strcat(dataForMap, dataValArr[1]);
 	strcat(dataForMap, "\0");
 
-	insertInKeyMap(&(selfNode->dataValMap), hexHashKey, dataForMap);
+	cout << "ab: dataForMap " << dataForMap << endl;
+
+	insertInKeyMap(&selfNode->dataValMap, hexHashKey, dataForMap);
 
 }
 
@@ -345,7 +347,7 @@ char* getFromMyMap(char* data) {
 		cout << "Data not found for key: " << hexHashKey << endl;
 		return NULL;
 	}
-	return	getFromKeyMap(selfNode->dataValMap, hexHashKey);
+	return getFromKeyMap(selfNode->dataValMap, hexHashKey);
 
 }
 
@@ -353,6 +355,7 @@ void helperPut(char* putCmd) {
 	if (!checkIfPartOfNw(selfNode)) {
 		return;
 	}
+
 	char *dataVal = (char *) malloc(sizeof(char) * 1024);
 	char *hexHashKey = (char *) malloc(sizeof(char) * 41);
 	strcpy(dataVal, substring(putCmd, 5, strlen(putCmd) - 5));
@@ -363,9 +366,11 @@ void helperPut(char* putCmd) {
 
 	//char hexHashKey[HASH_HEX_BITS];
 	data2hexHash(dataValArr[0], hexHashKey);
+	cout << "ab: hashexkey " << hexHashKey << endl;
 
 	nodeHelper* remoteNode = find_successor(hexHashKey);
 	if (strcmp(remoteNode->nodeKey, selfNode->self->nodeKey) == 0) {
+		cout << "ab: dataval " << dataVal << endl;
 		putInMyMap(dataVal);
 	}
 
@@ -405,7 +410,7 @@ void helperGet(char* getCmd) {
 	nodeHelper* remoteNode = find_successor(hexHashKey);
 
 	if (strcmp(remoteNode->nodeKey, selfNode->self->nodeKey) == 0) {
-		strcpy(dataVal,getFromMyMap(data));
+		strcpy(dataVal, getFromMyMap(data));
 	}
 
 	else {
@@ -786,7 +791,7 @@ void userInput() {
 }
 
 void server() {
-	int sock, connected, bytes_recieved, trueint = 1;
+	int sock, connected, trueint = 1;
 
 	struct sockaddr_in server_addr, client_addr;
 	unsigned int sin_size;
