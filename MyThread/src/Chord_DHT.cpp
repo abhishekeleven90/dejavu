@@ -26,18 +26,19 @@ using namespace std;
 #define DATA_SIZE 16384
 #define KILO 1024
 
-#define msgJoin 'j'
-#define msgDump 'd'
-#define msgQuit 'e'
-#define msgNodeSucc 's'
-#define msgNodePred 'p'
-#define msgChangeSucc 'a'
-#define msgChangePred 'b'
-#define msgKeySucc 'k'
-#define msgFinger 'f'
-#define msgConnectFailed 'x'
-#define msgPut 'i'
-#define msgGet 'g'
+#define MSG_JOIN "j:"
+#define MSG_DUMP "d:"
+#define MSG_DUMP_ALL "u:"
+#define MSG_QUIT "e:"
+#define MSG_NODE_SUCC "s:"
+#define MSG_NODE_PRED "p:"
+#define MSG_CHNG_SUCC "a:"
+#define MSG_CHNG_PRED "b:"
+#define MSG_KEY_SUCC "k:"
+#define MSG_FINGER "f:"
+#define MSG_PUT "i:"
+#define MSG_GET "g:"
+#define SERVER_BUSY 'x'
 
 //----------Globals---------
 char ui_data[KILO];
@@ -91,7 +92,7 @@ void processFinger(char *data);
 void processChangeSucc(char *addr);
 void processChangePred(char *addr);
 void processKeySucc(char *keyToSearch);
-void processGetDump();
+void processDump();
 
 void changeSuccAndFixFirstFinger(nodeHelper* succ);
 
@@ -261,14 +262,13 @@ void helperJoin(char* joinCmd) {
 	helperCreate();
 
 	//Making the connection
-	client_send_data[0] = 'j';
-	client_send_data[1] = ':';
-	client_send_data[2] = '\0';
+	char tmp[3] = MSG_JOIN;
+	strcpy(client_send_data, tmp);
 	int clientThreadID = create(client);
 
 	runClientAndWaitForResult(clientThreadID);
 
-	if (client_recv_data[0] == 'x') {
+	if (client_recv_data[0] == SERVER_BUSY) {
 		isJoined = false;
 		isCreated = false;
 		deleteThread(serverThreadId);
@@ -307,7 +307,7 @@ void helperQuit() {
 			<< "Asking all the nodes to shut down, Thanks for using chord_DHT, see you again soon :)"
 			<< endl;
 
-	char tmp[3] = "e:";
+	char tmp[3] = MSG_QUIT;
 	strcpy(client_send_data, tmp);
 	strcat(client_send_data, selfNode->self->ipWithPort);
 	askSuccToQuit();
@@ -370,7 +370,7 @@ void helperPut(char* putCmd) {
 	}
 
 	else {
-		char tmp[3] = "i:";
+		char tmp[3] = MSG_PUT;
 		strcpy(client_send_data, tmp);
 		strcat(client_send_data, dataVal);
 
@@ -409,7 +409,7 @@ void helperGet(char* getCmd) {
 	}
 
 	else {
-		char tmp[3] = "g:";
+		char tmp[3] = MSG_GET;
 		strcpy(client_send_data, tmp);
 		strcat(client_send_data, dataArr[0]);
 
@@ -430,7 +430,7 @@ void helperFinger() {
 		return;
 	}
 
-	char tmp[3] = "f:";
+	char tmp[3] = MSG_FINGER;
 	strcpy(client_send_data, tmp);
 	askSuccForFinger();
 }
@@ -455,7 +455,24 @@ void helperDump() {
 	}
 
 	printNodeDetails(selfNode);
-	//TO-DO: needs to be implemented ::: printing keys stored
+}
+
+void getAndPrintDump(char *addr, unsigned int port)
+{
+    strcpy(ip2Join, addr);
+    remote_port = port;
+    char tmp[3] = MSG_DUMP;
+    strcpy(client_send_data, tmp);
+    int clientThreadID = create(client);
+    retry_count = 5; //Modifying the retry count assuming server IP may be incorrect
+    runClientAndWaitForResult(clientThreadID);
+    retry_count = 9999; //Modifying the retry count for all the future connections
+    if (client_recv_data[0] == SERVER_BUSY) { //Server busy or does not exist
+		//return;
+	}
+    cout << "Dump Received" << endl;
+    cout << client_recv_data << endl; //TO-DO: remove
+    //split()
 }
 
 void helperDumpAddr(char* dumpAddrCmd) {
@@ -474,34 +491,18 @@ void helperDumpAddr(char* dumpAddrCmd) {
 		//Invalid portNumber
 		return;
 	}
-
-	strcpy(ip2Join, addr);
-	remote_port = port;
-
-	client_send_data[0] = 'd';
-	client_send_data[1] = ':';
-	client_send_data[2] = '\0';
-	int clientThreadID = create(client);
-
-	retry_count = 5; //Modifying the retry count assuming server IP may be incorrect
-	runClientAndWaitForResult(clientThreadID);
-	retry_count = 9999; //Modifying the retry count for all the future connections
-
-	if (client_recv_data[0] == 'x') { //Server busy or does not exist
-		return;
-	}
-
-	cout << "Dump Received" << endl;
-	cout << client_recv_data << endl; //TO-DO: remove
-
-	//split()
+    getAndPrintDump(addr, port);
 }
 
 void helperDumpAll() {
 	if (!checkIfPartOfNw(selfNode)) {
 		return;
 	}
-	//TO-DO: needs to be implemented
+
+	char tmp[3] = MSG_DUMP_ALL;
+	strcpy(client_send_data, tmp);
+
+	//getAndPrintDump();
 }
 
 //populates finger table with all the self entries - only node in the network
@@ -681,7 +682,7 @@ void processKeySucc(char *keyToSearch) {
 	strcpy(server_send_data, toReturn->ipWithPort);
 }
 
-void processGetDump() {
+void processDump() {
 	cout << "Client wants my dump" << endl;
 
 	strcpy(server_send_data, selfNode->self->ipWithPort);
@@ -703,6 +704,11 @@ void processGetDump() {
 		strcat(server_send_data, selfNode->fingerNode[i]->ipWithPort);
 		strcat(server_send_data, ",");
 	}
+}
+
+void processDumpAll() {
+	cout << "Received DumpAll request" << endl;
+	processDump();
 }
 
 void changeSuccAndFixFirstFinger(nodeHelper* succ) {
@@ -841,47 +847,51 @@ void server() {
 		char* type = substring(server_recv_data, 0, 2);
 		char* data = substring(server_recv_data, 3, strlen(server_recv_data));
 
-		if (strcmp(type, "e:") == 0) {
+		if (strcmp(type, MSG_QUIT) == 0) {
 			processQuit(data);
 		}
 
-		else if (strcmp(type, "j:") == 0) {
+		else if (strcmp(type, MSG_JOIN) == 0) {
 			processJoin();
 		}
 
-		else if (strcmp(type, "s:") == 0) {
+		else if (strcmp(type, MSG_NODE_SUCC) == 0) {
 			processSucc();
 		}
 
-		else if (strcmp(type, "p:") == 0) {
+		else if (strcmp(type, MSG_NODE_PRED) == 0) {
 			processPred();
 		}
 
-		else if (strcmp(type, "f:") == 0) {
+		else if (strcmp(type, MSG_FINGER) == 0) {
 			processFinger(data);
 		}
 
-		else if (strcmp(type, "k:") == 0) {
+		else if (strcmp(type, MSG_KEY_SUCC) == 0) {
 			processKeySucc(data);
 		}
 
-		else if (strcmp(type, "d:") == 0) {
-			processGetDump();
+		else if (strcmp(type, MSG_DUMP) == 0) {
+			processDump();
 		}
 
-		else if (strcmp(type, "a:") == 0) {
+		else if (strcmp(type, MSG_DUMP_ALL) == 0) {
+			processDumpAll();
+		}
+
+		else if (strcmp(type, MSG_CHNG_SUCC) == 0) {
 			processChangeSucc(data);
 		}
 
-		else if (strcmp(type, "b:") == 0) {
+		else if (strcmp(type, MSG_CHNG_PRED) == 0) {
 			processChangePred(data);
 		}
 
-		else if (strcmp(type, "i:") == 0) {
+		else if (strcmp(type, MSG_PUT) == 0) {
 			processPut(data);
 		}
 
-		else if (strcmp(type, "g:") == 0) {
+		else if (strcmp(type, MSG_GET) == 0) {
 			processGet(data);
 		}
 
@@ -936,7 +946,7 @@ void client() {
 	int sock, bytes_recieved;
 
 	if (!connectToServer(sock)) {
-		client_recv_data[0] = 'x'; //Inserting this --- to be used in helperJoin
+		client_recv_data[0] = SERVER_BUSY; //Inserting this --- to be used in helperJoin
 		return;
 	}
 
@@ -983,9 +993,9 @@ void fixFingers() {
 nodeHelper* get_SuccFromRemoteNode(nodeHelper* remoteNode) {
 	strcpy(ip2Join, remoteNode->ip);
 	remote_port = remoteNode->port;
-	client_send_data[0] = 's';
-	client_send_data[1] = ':';
-	client_send_data[2] = '\0';
+
+	char tmp[3] = MSG_NODE_SUCC;
+	strcpy(client_send_data, tmp);
 	int clientThreadID = create(client);
 	runClientAndWaitForResult(clientThreadID);
 	cout << "Got the successor from remote node: " << client_recv_data << endl;
@@ -995,9 +1005,9 @@ nodeHelper* get_SuccFromRemoteNode(nodeHelper* remoteNode) {
 nodeHelper* get_PredFromRemoteNode(nodeHelper* remoteNode) {
 	strcpy(ip2Join, remoteNode->ip);
 	remote_port = remoteNode->port;
-	client_send_data[0] = 'p';
-	client_send_data[1] = ':';
-	client_send_data[2] = '\0';
+
+	char tmp[3] = MSG_NODE_PRED;
+	strcpy(client_send_data, tmp);
 	int clientThreadID = create(client);
 	runClientAndWaitForResult(clientThreadID);
 	cout << "Got the predecessor from remote node: " << client_recv_data
@@ -1009,7 +1019,7 @@ void changeSuccOfRemoteNodeToMyself(nodeHelper* remoteNode) {
 	strcpy(ip2Join, remoteNode->ip);
 	remote_port = remoteNode->port;
 
-	char tmp[3] = "a:";
+	char tmp[3] = MSG_CHNG_SUCC;
 	strcpy(client_send_data, tmp);
 	strcat(client_send_data, selfNode->self->ipWithPort);
 
@@ -1022,7 +1032,7 @@ void changePredOfRemoteNodeToMyself(nodeHelper* remoteNode) {
 	strcpy(ip2Join, remoteNode->ip);
 	remote_port = remoteNode->port;
 
-	char tmp[3] = "b:";
+	char tmp[3] = MSG_CHNG_PRED;
 	strcpy(client_send_data, tmp);
 	strcat(client_send_data, selfNode->self->ipWithPort);
 
@@ -1061,7 +1071,7 @@ nodeHelper* getKeySuccFromRemoteNode(nodeHelper* remoteNode, char key[]) {
 
 	strcpy(ip2Join, remoteNode->ip);
 	remote_port = remoteNode->port;
-	char tmp[] = "k:";
+	char tmp[] = MSG_KEY_SUCC;
 	strcpy(client_send_data, tmp); //we will be acting as client to send data
 	strcat(client_send_data, key);
 	cout << "Sending this data to remote node: " << client_send_data << endl;
