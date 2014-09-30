@@ -345,10 +345,9 @@ char* getFromMyMap(char* data) {
 
 	if (!isPresentInKeyMap((selfNode->dataValMap), hexHashKey)) {
 		cout << "Data not found for key: " << hexHashKey << endl;
-		return NULL;
+		return "DATA NOT FOUND!!!";
 	}
 	return getFromKeyMap(selfNode->dataValMap, hexHashKey);
-
 }
 
 void helperPut(char* putCmd) {
@@ -424,7 +423,11 @@ void helperGet(char* getCmd) {
 		int clientThreadID = create(client);
 		runClientAndWaitForResult(clientThreadID);
 		strcpy(dataVal, client_recv_data);
-		//dataVal = client_recv_data;
+	}
+
+	if (strcmp(dataVal, "DATA NOT FOUND!!!") == 0) {
+		cout << dataVal << endl;
+		return;
 	}
 
 	cout << "Data Found: " << hexHashKey << "\t" << dataVal << endl;
@@ -462,22 +465,21 @@ void helperDump() {
 	printNodeDetails(selfNode);
 }
 
-void getAndPrintDump(char *addr, unsigned int port)
-{
-    strcpy(ip2Join, addr);
-    remote_port = port;
-    char tmp[3] = MSG_DUMP;
-    strcpy(client_send_data, tmp);
-    int clientThreadID = create(client);
-    retry_count = 5; //Modifying the retry count assuming server IP may be incorrect
-    runClientAndWaitForResult(clientThreadID);
-    retry_count = 9999; //Modifying the retry count for all the future connections
-    if (client_recv_data[0] == SERVER_BUSY) { //Server busy or does not exist
+void getAndPrintDump(char *addr, unsigned int port) {
+	strcpy(ip2Join, addr);
+	remote_port = port;
+	char tmp[3] = MSG_DUMP;
+	strcpy(client_send_data, tmp);
+	int clientThreadID = create(client);
+	retry_count = 5; //Modifying the retry count assuming server IP may be incorrect
+	runClientAndWaitForResult(clientThreadID);
+	retry_count = 9999; //Modifying the retry count for all the future connections
+	if (client_recv_data[0] == SERVER_BUSY) { //Server busy or does not exist
 		//return;
 	}
-    cout << "Dump Received" << endl;
-    cout << client_recv_data << endl; //TO-DO: remove
-    //split()
+	cout << "Dump Received" << endl;
+	cout << client_recv_data << endl; //TO-DO: remove
+	//split()
 }
 
 void helperDumpAddr(char* dumpAddrCmd) {
@@ -496,7 +498,7 @@ void helperDumpAddr(char* dumpAddrCmd) {
 		//Invalid portNumber
 		return;
 	}
-    getAndPrintDump(addr, port);
+	getAndPrintDump(addr, port);
 }
 
 void helperDumpAll() {
@@ -676,7 +678,7 @@ void processGet(char *data) {
 	data2hexHash(data, hexHashKey);
 	char dataVal[KILO];
 
-	strcpy(dataVal, getFromKeyMap(selfNode->dataValMap, hexHashKey));
+	strcpy(dataVal, getFromMyMap(data));
 	strcpy(server_send_data, dataVal);
 }
 
