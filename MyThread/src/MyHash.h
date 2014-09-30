@@ -9,8 +9,16 @@ struct cmp_key { // comparator used for identifying keys
 	}
 };
 
+struct cmp_str
+{
+   bool operator()(char const *a, char const *b)
+   {
+      return strcmp(a, b) < 0;
+   }
+};
+
 typedef map<const char*, const char*, cmp_key> hashmap;
-typedef map<char*, char*> keyMap;
+typedef map<char*, char*, cmp_str> keyMap;
 
 //****************Function Declarations*******************
 void insertInMap(hashmap* myMap, char *hexHashKey, const char *data);
@@ -56,7 +64,7 @@ const char* getFromMap(hashmap myMap, const char *key) {
 	return (*iter).second;
 }
 
-const char* getFromKeyMap(keyMap myMap, char *key) {
+char* getFromKeyMap(keyMap myMap, char *key) {
 	keyMap::iterator iter = myMap.find(key);
 	return (*iter).second;
 }
