@@ -28,7 +28,7 @@ using namespace std;
 
 #define msgJoin 'j'
 #define msgDump 'd'
-#define msgQuit 'q'
+#define msgQuit 'e'
 #define msgNodeSucc 's'
 #define msgNodePred 'p'
 #define msgChangeSucc 'a'
@@ -82,8 +82,9 @@ void populateFingerTableSelf();
 void fillNodeEntries(struct sockaddr_in server_addr);
 
 void askSuccForFinger();
+void askSuccToQuit();
 
-void processQuit();
+void processQuit(char *data);
 void processSucc();
 void processPred();
 void processFinger(char *data);
@@ -301,16 +302,20 @@ void helperQuit() {
 	if (!checkIfPartOfNw(selfNode)) {
 		return;
 	}
-	cout << "Thanks for using chord_DHT, see you again soon :)" << endl;
-	clean(); //cleaning all the threads & exiting
-	//TO-DO: needs to be implemented
+
+	cout
+			<< "Asking all the nodes to shut down, Thanks for using chord_DHT, see you again soon :)"
+			<< endl;
+
+	char tmp[3] = "e:";
+	strcpy(client_send_data, tmp);
+	strcat(client_send_data, selfNode->self->ipWithPort);
+	askSuccToQuit();
 }
 
 void putInMyMap(char* dataVal) {
 
-	char dataValArr[2][M];
-	//memset(dataValArr[0], '\0', M);
-	//memset(dataValArr[1], '\0', M);
+	char dataValArr[2][KILO];
 	split(dataVal, ' ', dataValArr);
 
 	char* hexHashKey = (char *) malloc(sizeof(char) * 41);
@@ -323,6 +328,7 @@ void putInMyMap(char* dataVal) {
 	strcpy(dataForMap, dataValArr[0]);
 	strcat(dataForMap, "=>");
 	strcat(dataForMap, dataValArr[1]);
+	strcat(dataForMap, "\0");
 
 	insertInKeyMap(&(selfNode->dataValMap), hexHashKey, dataForMap);
 
@@ -351,7 +357,8 @@ void helperPut(char* putCmd) {
 	char *hexHashKey = (char *) malloc(sizeof(char) * 41);
 	strcpy(dataVal, substring(putCmd, 5, strlen(putCmd) - 5));
 
-	char dataValArr[2][M];
+	char dataValArr[2][KILO];
+
 	split(dataVal, ' ', dataValArr);
 
 	//char hexHashKey[HASH_HEX_BITS];
@@ -385,10 +392,15 @@ void helperGet(char* getCmd) {
 	}
 	char dataVal[1024];
 
-	char* data = substring(getCmd, 5, strlen(getCmd) - 5);
+	char data[KILO];
+	strcpy(data, substring(getCmd, 5, strlen(getCmd) - 5));
+
+	char dataArr[1][KILO];
+
+	split(data, ' ', dataArr);
 
 	char hexHashKey[HASH_HEX_BITS];
-	data2hexHash(data, hexHashKey);
+	data2hexHash(dataArr[0], hexHashKey);
 
 	nodeHelper* remoteNode = find_successor(hexHashKey);
 
@@ -399,7 +411,7 @@ void helperGet(char* getCmd) {
 	else {
 		char tmp[3] = "g:";
 		strcpy(client_send_data, tmp);
-		strcat(client_send_data, data);
+		strcat(client_send_data, dataArr[0]);
 
 		strcpy(ip2Join, remoteNode->ip);
 		remote_port = remoteNode->port;
@@ -549,10 +561,14 @@ void askSuccForFinger() {
 	runClientAndWaitForResult(clientThreadID);
 }
 
-void processQuit() {
-	cout << "client wants to disconnect" << endl;
-	server_send_data[0] = 'q';
-	server_send_data[1] = '\0';
+void askSuccToQuit() {
+	strcpy(ip2Join, selfNode->successor->ip);
+	remote_port = selfNode->successor->port;
+
+	cout << "Inside askSuccToQuit: clientsendData - " << client_send_data
+			<< endl;
+	int clientThreadID = create(client);
+	run(clientThreadID);
 }
 
 void processJoin() {
@@ -577,25 +593,48 @@ void processPred() {
 }
 
 void processFinger(char *data) {
-	cout << data << endl;
 	char *startAddr = substring(data, 0, indexOf(data, ','));
-	cout << startAddr << endl; //TO-DO : remove the cout -- keep it until finger fully tested
 	cout << "client wants to find the fingers" << endl;
+
 	if (strcmp(startAddr, selfNode->self->ipWithPort) == 0) { // checking if I am the starting node
 		cout << "Got all the fingers, printing now: " << endl;
 		int occ = countOccurence(data, ',') + 1;
-		char addressArr[occ][M];
+		char addressArr[occ][KILO];
 		split(data, ',', addressArr);
 		for (int i = 0; i < occ - 1; i++) {
 			cout << i << " -> " << addressArr[i] << endl;
 		}
-	} else {
-		//TO-DO : needs to be tested
+	}
+
+	else {
 		strcpy(client_send_data, server_recv_data);
 		askSuccForFinger();
 	}
 	server_send_data[0] = 'q';
 	server_send_data[1] = '\0';
+}
+
+void shutMe() {
+	cout << "Shutting myself after 5 sec" << endl;
+	sleep(5);
+	close(serverSock);
+	clean();
+}
+
+void processQuit(char *data) {
+	cout << "ChordRing shutting down, I need to shut as well" << endl;
+
+	strcat(data, ",");
+	char *startAddr = substring(data, 0, indexOf(data, ','));
+
+	if (strcmp(startAddr, selfNode->self->ipWithPort) == 0) { // checking if I am the starting node
+		cout << "Quit Request Sent to all the nodes" << endl;
+		shutMe();
+	} else {
+		strcpy(client_send_data, server_recv_data);
+		askSuccToQuit();
+	}
+	shutMe();
 }
 
 void processChangeSucc(char *addr) {
@@ -803,8 +842,8 @@ void server() {
 		char* type = substring(server_recv_data, 0, 2);
 		char* data = substring(server_recv_data, 3, strlen(server_recv_data));
 
-		if (strcmp(type, "q:") == 0) {
-			processQuit();
+		if (strcmp(type, "e:") == 0) {
+			processQuit(data);
 		}
 
 		else if (strcmp(type, "j:") == 0) {
@@ -1061,6 +1100,7 @@ int main() {
 	create(userInput);
 	start();
 	return 0;
+
 	/*putInMyMap("123 kapil");
 	 getFromMyMap("123");*/
 
