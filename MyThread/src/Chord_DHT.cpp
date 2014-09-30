@@ -307,9 +307,7 @@ void helperQuit() {
 }
 
 void putInMyMap(char* dataVal) {
-	char dataValArr[2][M];
-	memset(dataValArr[0], '\0', M);
-	memset(dataValArr[1], '\0', M);
+	char dataValArr[2][KILO];
 	split(dataVal, ' ', dataValArr);
 
 	char hexHashKey[HASH_HEX_BITS];
@@ -320,6 +318,7 @@ void putInMyMap(char* dataVal) {
 	strcpy(dataForMap, dataValArr[0]);
 	strcat(dataForMap, "=>");
 	strcat(dataForMap, dataValArr[1]);
+	strcat(dataForMap, "\0");
 
 	insertInKeyMap(&selfNode->dataValMap, hexHashKey, dataForMap);
 	/*
@@ -365,7 +364,9 @@ void helperPut(char* putCmd) {
 	}
 	char dataVal[KILO];
 	strcpy(dataVal, substring(putCmd, 5, strlen(putCmd) - 5));
-	char dataValArr[2][M];
+
+	char dataValArr[2][KILO];
+
 	split(dataVal, ' ', dataValArr);
 
 	char hexHashKey[HASH_HEX_BITS];
@@ -396,23 +397,29 @@ void helperGet(char* getCmd) {
 	if (!checkIfPartOfNw(selfNode)) {
 		return;
 	}
+
 	string dataVal;
 
-	char* data = substring(getCmd, 5, strlen(getCmd) - 5);
+	char data[KILO];
+	strcpy(data, substring(getCmd, 5, strlen(getCmd) - 5));
+
+	char dataArr[1][KILO];
+
+	split(data, ' ', dataArr);
 
 	char hexHashKey[HASH_HEX_BITS];
-	data2hexHash(data, hexHashKey);
+	data2hexHash(dataArr[0], hexHashKey);
 
 	nodeHelper* remoteNode = find_successor(hexHashKey);
 
 	if (strcmp(remoteNode->nodeKey, selfNode->self->nodeKey) == 0) {
-		getFromMyMap(data);
+		dataVal = getFromMyMap(data);
 	}
 
 	else {
 		char tmp[3] = "g:";
 		strcpy(client_send_data, tmp);
-		strcat(client_send_data, data);
+		strcat(client_send_data, dataArr[0]);
 
 		strcpy(ip2Join, remoteNode->ip);
 		remote_port = remoteNode->port;
@@ -597,7 +604,7 @@ void processFinger(char *data) {
 	if (strcmp(startAddr, selfNode->self->ipWithPort) == 0) { // checking if I am the starting node
 		cout << "Got all the fingers, printing now: " << endl;
 		int occ = countOccurence(data, ',') + 1;
-		char addressArr[occ][M];
+		char addressArr[occ][KILO];
 		split(data, ',', addressArr);
 		for (int i = 0; i < occ - 1; i++) {
 			cout << i << " -> " << addressArr[i] << endl;
@@ -1073,6 +1080,7 @@ int main() {
 	create(userInput);
 	start();
 	return 0;
+
 	/*putInMyMap("123 kapil");
 	 getFromMyMap("123");*/
 

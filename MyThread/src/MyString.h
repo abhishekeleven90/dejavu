@@ -7,7 +7,7 @@ void tab(int count);
 bool startsWith(const char *a, const char *b);
 char* substring(char *string, int position, int length);
 int countOccurence(char* string, char splitter);
-void split(char* string, char splitter, char splittedArr[][IP_SIZE]);
+void split(char* string, char splitter, char splittedArr[][1024]);
 int indexOf(char* string, char of);
 
 //****************Function Definitions*******************
@@ -63,7 +63,7 @@ int countOccurence(char* string, char splitter) {
 	return count;
 }
 
-void split(char* string, char splitter, char splittedArr[][160]) {
+void split(char* string, char splitter, char splittedArr[][1024]) {
 	int len = strlen(string);
 	char tmp[len];
 	memset(tmp,'\0',strlen(tmp));
