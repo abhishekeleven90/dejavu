@@ -4,6 +4,7 @@
 #include <netinet/in.h>
 #include <netdb.h>
 #include <arpa/inet.h>
+#include <ifaddrs.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -307,39 +308,63 @@ void helperQuit() {
 
 void putInMyMap(char* dataVal) {
 	char dataValArr[2][M];
+	memset(dataValArr[0], '\0', M);
+	memset(dataValArr[1], '\0', M);
 	split(dataVal, ' ', dataValArr);
 
 	char hexHashKey[HASH_HEX_BITS];
 	data2hexHash(dataValArr[0], hexHashKey);
 
 	char dataForMap[KILO];
+	memset(dataForMap, '\0', KILO);
 	strcpy(dataForMap, dataValArr[0]);
 	strcat(dataForMap, "=>");
 	strcat(dataForMap, dataValArr[1]);
 
-	insertInMap(&selfNode->keyMap, hexHashKey, dataForMap);
+	insertInKeyMap(&selfNode->dataValMap, hexHashKey, dataForMap);
+	/*
+	 map<const char*, const char*>::iterator it;
 
-	strcpy(dataVal, getFromMap(selfNode->keyMap, hexHashKey));
-	cout << "data::" << dataVal;
+	 for (map<const char*, const char*>::iterator it =
+	 (selfNode->keyMap).begin(); it != (selfNode->keyMap).end(); ++it) {
+	 cout << it->first << " : " << it->second << '\n';
+	 }
+
+	 if (!isPresentInMap(selfNode->keyMap, hexHashKey)) {
+	 cout << "Data not found for key: " << hexHashKey << endl;
+	 return;
+	 }
+
+	 string dataVal1 = getFromMap(selfNode->keyMap, hexHashKey);
+	 cout << "data::" << dataVal1;*/
 }
 
-void getFromMyMap(char* data, char* dataVal) {
+string getFromMyMap(char* data) {
 	char hexHashKey[HASH_HEX_BITS];
 	data2hexHash(data, hexHashKey);
 
-	if (!isPresentInMap(selfNode->keyMap, hexHashKey)) {
-		cout << "Data not found for key: " << hexHashKey << endl;
-		return;
+	map<const char*, const char*>::iterator it;
+
+	for (map<char*, char*>::iterator it = (selfNode->dataValMap).begin(); it
+			!= (selfNode->dataValMap).end(); ++it) {
+		cout << it->first << " : " << it->second << '\n';
 	}
 
-	strcpy(dataVal, getFromMap(selfNode->keyMap, hexHashKey));
+	if (!isPresentInKeyMap(selfNode->dataValMap, hexHashKey)) {
+		cout << "Data not found for key: " << hexHashKey << endl;
+		return NULL;
+	}
+
+	string dataVal = getFromKeyMap(selfNode->dataValMap, hexHashKey);
+	return dataVal;
 }
 
 void helperPut(char* putCmd) {
 	if (!checkIfPartOfNw(selfNode)) {
 		return;
 	}
-	char* dataVal = substring(putCmd, 5, strlen(putCmd) - 5);
+	char dataVal[KILO];
+	strcpy(dataVal, substring(putCmd, 5, strlen(putCmd) - 5));
 	char dataValArr[2][M];
 	split(dataVal, ' ', dataValArr);
 
@@ -371,7 +396,7 @@ void helperGet(char* getCmd) {
 	if (!checkIfPartOfNw(selfNode)) {
 		return;
 	}
-	char dataVal[KILO];
+	string dataVal;
 
 	char* data = substring(getCmd, 5, strlen(getCmd) - 5);
 
@@ -381,7 +406,7 @@ void helperGet(char* getCmd) {
 	nodeHelper* remoteNode = find_successor(hexHashKey);
 
 	if (strcmp(remoteNode->nodeKey, selfNode->self->nodeKey) == 0) {
-		getFromMyMap(data, dataVal);
+		getFromMyMap(data);
 	}
 
 	else {
@@ -394,7 +419,8 @@ void helperGet(char* getCmd) {
 
 		int clientThreadID = create(client);
 		runClientAndWaitForResult(clientThreadID);
-		strcpy(dataVal, client_recv_data);
+		//strcpy(dataVal, client_recv_data);
+		dataVal = client_recv_data;
 	}
 
 	cout << "Data Found: " << hexHashKey << "\t" << dataVal << endl;
@@ -489,8 +515,12 @@ void populateFingerTableSelf() {
 void fillNodeEntries(struct sockaddr_in server_addr) {
 	nodeHelper* self = new nodeHelper();
 
-	strcpy(self->ip, inet_ntoa(server_addr.sin_addr));
-	self->port = ntohs(server_addr.sin_port);
+	char ip[IP_SIZE];
+	getMyIp(ip);
+
+	strcpy(self->ip, ip);
+
+	self->port = getMyPort(serverSock);
 
 	char ipWithPort[IP_SIZE];
 	joinIpWithPort(self->ip, self->port, ipWithPort);
@@ -614,7 +644,7 @@ void processGet(char *data) {
 	data2hexHash(data, hexHashKey);
 	char dataVal[KILO];
 
-	strcpy(dataVal, getFromMap(selfNode->keyMap, hexHashKey));
+	strcpy(dataVal, getFromKeyMap(selfNode->dataValMap, hexHashKey));
 	strcpy(server_send_data, dataVal);
 }
 
@@ -1043,4 +1073,10 @@ int main() {
 	create(userInput);
 	start();
 	return 0;
+	/*putInMyMap("123 kapil");
+	 getFromMyMap("123");*/
+
+	/*char ip[IP_SIZE];
+	 getMyIp(ip);
+	 cout << ip;*/
 }

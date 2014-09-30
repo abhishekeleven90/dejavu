@@ -10,6 +10,7 @@ struct cmp_key { // comparator used for identifying keys
 };
 
 typedef map<const char*, const char*, cmp_key> hashmap;
+typedef map<char*, char*> keyMap;
 
 //****************Function Declarations*******************
 void insertInMap(hashmap* myMap, char *hexHashKey, const char *data);
@@ -29,8 +30,20 @@ void insertInMap(hashmap* myMap, char *hexHashKey, const char *data) {
 	(*myMap).insert(hashmap::value_type(hexHashKey, data));
 }
 
+void insertInKeyMap(keyMap* myMap, char *hexHashKey, char *data) {
+	(*myMap).insert(keyMap::value_type(hexHashKey, data));
+}
+
 bool isPresentInMap(hashmap myMap, char *key) {
 	hashmap::iterator iter = myMap.find(key);
+	if (iter != myMap.end()) {
+		return true;
+	}
+	return false;
+}
+
+bool isPresentInKeyMap(keyMap myMap, char *key) {
+	keyMap::iterator iter = myMap.find(key);
 	if (iter != myMap.end()) {
 		return true;
 	}
@@ -40,6 +53,11 @@ bool isPresentInMap(hashmap myMap, char *key) {
 //use this function to getFromMap only if 'isPresentInMap == true'
 const char* getFromMap(hashmap myMap, const char *key) {
 	hashmap::iterator iter = myMap.find(key);
+	return (*iter).second;
+}
+
+const char* getFromKeyMap(keyMap myMap, char *key) {
+	keyMap::iterator iter = myMap.find(key);
 	return (*iter).second;
 }
 

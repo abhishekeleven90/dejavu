@@ -15,7 +15,7 @@ struct Node {
 
 	char fingerStart[M][HASH_HEX_BITS];
 	nodeHelper* fingerNode[M];
-	map<const char*, const char*, cmp_key> keyMap;
+	keyMap dataValMap;
 };
 
 //****************Function Declarations*******************
@@ -114,10 +114,10 @@ void printAllFingerTable(Node* node) {
 }
 
 void printDataValMap(Node* node) {
-	map<const char*,const char*>::iterator it;
+	map<char*, char*>::iterator it;
 
-	for (map<const char*,const char*>::iterator it = (node->keyMap).begin(); it
-			!= (node->keyMap).end(); ++it) {
+	for (map<char*, char*>::iterator it = (node->dataValMap).begin(); it
+			!= (node->dataValMap).end(); ++it) {
 		cout << it->first << " : " << it->second << '\n';
 	}
 }
@@ -135,4 +135,49 @@ void printNodeDetails(Node* node) {
 void helperHelpNewCmd() {
 	cout << endl;
 	tab(1);
+}
+
+void getMyIp(char* ip) {
+	struct ifaddrs * ifAddrStruct = NULL;
+	struct ifaddrs * ifa = NULL;
+	void * tmpAddrPtr = NULL;
+
+	getifaddrs(&ifAddrStruct);
+
+	for (ifa = ifAddrStruct; ifa != NULL; ifa = ifa->ifa_next) {
+		if (!ifa->ifa_addr) {
+			continue;
+		}
+		if (ifa->ifa_addr->sa_family == AF_INET) { // check it is IP4
+			// is a valid IP4 Address
+			tmpAddrPtr = &((struct sockaddr_in *) ifa->ifa_addr)->sin_addr;
+			char addressBuffer[INET_ADDRSTRLEN];
+			inet_ntop(AF_INET, tmpAddrPtr, addressBuffer, INET_ADDRSTRLEN);
+			//printf("%s IP Address %s\n", ifa->ifa_name, addressBuffer);
+			if (strcmp(ifa->ifa_name, "eth0") == 0) {
+				strcpy(ip, addressBuffer);
+			}
+		} else if (ifa->ifa_addr->sa_family == AF_INET6) { // check it is IP6
+			// is a valid IP6 Address
+			tmpAddrPtr = &((struct sockaddr_in6 *) ifa->ifa_addr)->sin6_addr;
+			char addressBuffer[INET6_ADDRSTRLEN];
+			inet_ntop(AF_INET6, tmpAddrPtr, addressBuffer, INET6_ADDRSTRLEN);
+			//printf("%s IP Address %s\n", ifa->ifa_name, addressBuffer);
+		}
+	}
+
+	if (ifAddrStruct != NULL) {
+		freeifaddrs(ifAddrStruct);
+	}
+}
+
+int getMyPort(int mySock) {
+	struct sockaddr_in sin;
+	socklen_t addrlen = sizeof(sin);
+	if (getsockname(mySock, (struct sockaddr *) &sin, &addrlen) == 0
+			&& sin.sin_family == AF_INET && addrlen == sizeof(sin)) {
+		int local_port = ntohs(sin.sin_port);
+		return local_port;
+	} else
+		; // handle error
 }

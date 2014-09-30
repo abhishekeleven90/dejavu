@@ -1,5 +1,5 @@
 //----------Constants---------
-#define IP_SIZE 20
+#define IP_SIZE 40
 
 //****************Function Declarations*******************
 void intToChar(int intToChng, char* charToRet);
@@ -66,6 +66,7 @@ int countOccurence(char* string, char splitter) {
 void split(char* string, char splitter, char splittedArr[][160]) {
 	int len = strlen(string);
 	char tmp[len];
+	memset(tmp,'\0',strlen(tmp));
 	int j = 0; //pointer for tmp string
 	int k = 0; //pointer for strings in splittedArr
 	for (int i = 0; i < len; i++) {
@@ -76,6 +77,7 @@ void split(char* string, char splitter, char splittedArr[][160]) {
 			tmp[j] = '\0';
 			strcpy(splittedArr[k], tmp);
 			j = 0;
+			memset(tmp,'\0',strlen(tmp));
 			k++;
 		}
 	}
