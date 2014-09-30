@@ -23,6 +23,7 @@ using namespace std;
 #define SECOND 1000000
 #define QUEUE_LIMIT 5
 #define DATA_SIZE 16384
+#define KILO 1024
 
 #define msgJoin 'j'
 #define msgDump 'd'
@@ -34,9 +35,11 @@ using namespace std;
 #define msgKeySucc 'k'
 #define msgFinger 'f'
 #define msgConnectFailed 'x'
+#define msgPut 'i'
+#define msgGet 'g'
 
 //----------Globals---------
-char ui_data[1024];
+char ui_data[KILO];
 char server_send_data[DATA_SIZE], server_recv_data[DATA_SIZE];
 char client_send_data[DATA_SIZE], client_recv_data[DATA_SIZE];
 
@@ -64,8 +67,8 @@ void helperPort(char* portCmd);
 void helperCreate();
 void helperJoin(char* joinCmd);
 void helperQuit();
-void helperPut();
-void helperGet();
+void helperPut(char* putCmd);
+void helperGet(char* getCmd);
 
 void helperFinger();
 void helperSuccessor();
@@ -302,18 +305,99 @@ void helperQuit() {
 	//TO-DO: needs to be implemented
 }
 
-void helperPut() {
-	if (!checkIfPartOfNw(selfNode)) {
-		return;
-	}
-	//TO-DO: needs to be implemented
+void putInMyMap(char* dataVal) {
+	char dataValArr[2][M];
+	split(dataVal, ' ', dataValArr);
+
+	char hexHashKey[HASH_HEX_BITS];
+	data2hexHash(dataValArr[0], hexHashKey);
+
+	char dataForMap[KILO];
+	strcpy(dataForMap, dataValArr[0]);
+	strcat(dataForMap, "=>");
+	strcat(dataForMap, dataValArr[1]);
+
+	insertInMap(&selfNode->keyMap, hexHashKey, dataForMap);
+
+	strcpy(dataVal, getFromMap(selfNode->keyMap, hexHashKey));
+	cout << "data::" << dataVal;
 }
 
-void helperGet() {
+void getFromMyMap(char* data, char* dataVal) {
+	char hexHashKey[HASH_HEX_BITS];
+	data2hexHash(data, hexHashKey);
+
+	if (!isPresentInMap(selfNode->keyMap, hexHashKey)) {
+		cout << "Data not found for key: " << hexHashKey << endl;
+		return;
+	}
+
+	strcpy(dataVal, getFromMap(selfNode->keyMap, hexHashKey));
+}
+
+void helperPut(char* putCmd) {
 	if (!checkIfPartOfNw(selfNode)) {
 		return;
 	}
-	//TO-DO: needs to be implemented
+	char* dataVal = substring(putCmd, 5, strlen(putCmd) - 5);
+	char dataValArr[2][M];
+	split(dataVal, ' ', dataValArr);
+
+	char hexHashKey[HASH_HEX_BITS];
+	data2hexHash(dataValArr[0], hexHashKey);
+
+	nodeHelper* remoteNode = find_successor(hexHashKey);
+	if (strcmp(remoteNode->nodeKey, selfNode->self->nodeKey) == 0) {
+		putInMyMap(dataVal);
+	}
+
+	else {
+		char tmp[3] = "i:";
+		strcpy(client_send_data, tmp);
+		strcat(client_send_data, dataVal);
+
+		strcpy(ip2Join, remoteNode->ip);
+		remote_port = remoteNode->port;
+
+		int clientThreadID = create(client);
+		runClientAndWaitForResult(clientThreadID);
+	}
+
+	cout << "Data inserted: " << dataVal << " with: " << hexHashKey << ", at: "
+			<< remoteNode->ipWithPort << endl;
+}
+
+void helperGet(char* getCmd) {
+	if (!checkIfPartOfNw(selfNode)) {
+		return;
+	}
+	char dataVal[KILO];
+
+	char* data = substring(getCmd, 5, strlen(getCmd) - 5);
+
+	char hexHashKey[HASH_HEX_BITS];
+	data2hexHash(data, hexHashKey);
+
+	nodeHelper* remoteNode = find_successor(hexHashKey);
+
+	if (strcmp(remoteNode->nodeKey, selfNode->self->nodeKey) == 0) {
+		getFromMyMap(data, dataVal);
+	}
+
+	else {
+		char tmp[3] = "g:";
+		strcpy(client_send_data, tmp);
+		strcat(client_send_data, data);
+
+		strcpy(ip2Join, remoteNode->ip);
+		remote_port = remoteNode->port;
+
+		int clientThreadID = create(client);
+		runClientAndWaitForResult(clientThreadID);
+		strcpy(dataVal, client_recv_data);
+	}
+
+	cout << "Data Found: " << hexHashKey << "\t" << dataVal << endl;
 }
 
 void helperFinger() {
@@ -515,6 +599,25 @@ void processChangePred(char *addr) {
 	server_send_data[1] = '\0';
 }
 
+void processPut(char *dataVal) {
+	cout << "client wants to put: " << dataVal << endl;
+	putInMyMap(dataVal);
+
+	server_send_data[0] = 'q';
+	server_send_data[1] = '\0';
+}
+
+void processGet(char *data) {
+	cout << "client wants to get val for: " << data << endl;
+
+	char hexHashKey[HASH_HEX_BITS];
+	data2hexHash(data, hexHashKey);
+	char dataVal[KILO];
+
+	strcpy(dataVal, getFromMap(selfNode->keyMap, hexHashKey));
+	strcpy(server_send_data, dataVal);
+}
+
 void processKeySucc(char *keyToSearch) {
 	cout << "Client requests for finding Node successor of this key: "
 			<< keyToSearch << endl;
@@ -584,11 +687,11 @@ void userInput() {
 		}
 
 		else if (strcmp(cmdType, "put") == 0) {
-			helperPut();
+			helperPut(ui_data);
 		}
 
 		else if (strcmp(cmdType, "get") == 0) {
-			helperGet();
+			helperGet(ui_data);
 		}
 
 		else if (strcmp(cmdType, "finger") == 0) {
@@ -718,6 +821,14 @@ void server() {
 			processChangePred(data);
 		}
 
+		else if (strcmp(type, "i:") == 0) {
+			processPut(data);
+		}
+
+		else if (strcmp(type, "g:") == 0) {
+			processGet(data);
+		}
+
 		send(connected, server_send_data, strlen(server_send_data), 0);
 		cout << "Done the required task, closing the connection" << endl;
 		close(connected);
@@ -806,8 +917,6 @@ void fixFingers() {
 		}
 
 		else {
-			cout << "Inside fixFingers: finding successor for: "
-					<< fixFingerIndex << endl;
 			selfNode->fingerNode[fixFingerIndex] = find_successor(key);
 		}
 

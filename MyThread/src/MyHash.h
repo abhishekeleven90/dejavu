@@ -12,7 +12,7 @@ struct cmp_key { // comparator used for identifying keys
 typedef map<const char*, const char*, cmp_key> hashmap;
 
 //****************Function Declarations*******************
-void insertInMap(hashmap* myMap, char *hexHashKey, char *data);
+void insertInMap(hashmap* myMap, char *hexHashKey, const char *data);
 bool isPresentInMap(hashmap myMap, char *key);
 const char* getFromMap(hashmap myMap, const char *key);
 void printHashKey(unsigned char* key, int len);
@@ -126,8 +126,8 @@ unsigned int hash(const char *mode, const char* dataToHash,
 	return md_len;
 }
 
-bool keyBelongCheck(char startKey[HASH_HEX_BITS],
-		char endKey[HASH_HEX_BITS], char searchKey[HASH_HEX_BITS]) {
+bool keyBelongCheck(char startKey[HASH_HEX_BITS], char endKey[HASH_HEX_BITS],
+		char searchKey[HASH_HEX_BITS]) {
 	char min[] = "0000000000000000000000000000000000000000";
 	char max[] = "ffffffffffffffffffffffffffffffffffffffff";
 

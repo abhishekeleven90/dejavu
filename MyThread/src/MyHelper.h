@@ -31,6 +31,7 @@ bool checkIfPartOfNw(Node* node);
 void printNotInNetworkErrorMessage();
 void printInNetworkErrorMessage();
 void printAllFingerTable(Node* node);
+void printDataValMap(Node* node);
 void printNodeDetails(Node* node);
 
 void helperHelpNewCmd();
@@ -112,6 +113,15 @@ void printAllFingerTable(Node* node) {
 	}
 }
 
+void printDataValMap(Node* node) {
+	map<const char*,const char*>::iterator it;
+
+	for (map<const char*,const char*>::iterator it = (node->keyMap).begin(); it
+			!= (node->keyMap).end(); ++it) {
+		cout << it->first << " : " << it->second << '\n';
+	}
+}
+
 void printNodeDetails(Node* node) {
 	cout << "self-> " << node->self->ipWithPort << endl;
 	cout << "Self Key-> " << node->self->nodeKey << endl;
@@ -119,6 +129,7 @@ void printNodeDetails(Node* node) {
 	cout << "Predecessor-> " << node->predecessor->ipWithPort << endl;
 	cout << "Finger table: " << endl;
 	printAllFingerTable(node);
+	printDataValMap(node);
 }
 
 void helperHelpNewCmd() {

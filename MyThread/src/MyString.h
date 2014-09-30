@@ -79,6 +79,10 @@ void split(char* string, char splitter, char splittedArr[][160]) {
 			k++;
 		}
 	}
+	if (string[len - 1] != splitter) { //Adding this check to get the last array
+		tmp[j] = '\0';
+		strcpy(splittedArr[k], tmp);
+	}
 }
 
 int indexOf(char* string, char of) {
