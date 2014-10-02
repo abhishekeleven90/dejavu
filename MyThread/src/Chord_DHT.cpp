@@ -581,7 +581,6 @@ void connectToRemoteNode(char* ip, unsigned int port) {
 	runClientAndWaitForResult(clientThreadID);
 }
 
-
 void processJoin() {
 	cout << "Client wants to join" << endl;
 	if (isFirstJoin) {
@@ -985,7 +984,7 @@ void fixFingers() {
 
 //I am going to distributeKeys to my pred
 void distributeKeys() {
-	cout<<"Will try and distribute keys since my pred changed"<<endl;
+	cout << "Will try and distribute keys since my pred changed" << endl;
 	map<char*, char*>::iterator it;
 	for (map<char*, char*>::iterator it = (selfNode->dataValMap).begin(); it
 			!= (selfNode->dataValMap).end(); ++it) {
@@ -995,12 +994,12 @@ void distributeKeys() {
 				selfNode->self->nodeKey) == 0) {
 
 		} else {
-			cout<<"TRANSFERING a data val pair to my pred"<<endl;
+			cout << "TRANSFERING a data val pair to my pred" << endl;
 			char *cmd = (char *) malloc(sizeof(char) * 1024);
 			strcpy(cmd, "put ");
 			strcat(cmd, it->second);//should work fine, null character
-			strcat(cmd,"#");//shouldn't get printed on server insert should be fine
-			cout<<"Command USED: "<<cmd<<endl;
+			strcat(cmd, "#");//shouldn't get printed on server insert should be fine
+			cout << "Command USED: " << cmd << endl;
 			helperPut(cmd);//need To change
 			selfNode->dataValMap.erase(it->first);//last line
 		}
