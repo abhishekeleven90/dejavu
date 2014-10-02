@@ -8,11 +8,13 @@ bool startsWith(const char *a, const char *b);
 char* substring(char *string, int position, int length);
 int countOccurence(char* string, char splitter);
 void split(char* string, char splitter, char splittedArr[][1024]);
+void split(char* string, char splitter, char splittedArr[][16384]);
 int indexOf(char* string, char of);
 
 //****************Function Definitions*******************
 void intToChar(int intToChng, char* charToRet) {
-	snprintf(charToRet, sizeof(charToRet), "%d", intToChng);
+	size_t size = sizeof(charToRet);
+	snprintf(charToRet, size, "%d", intToChng);
 }
 
 void tab(int count) {
@@ -66,7 +68,7 @@ int countOccurence(char* string, char splitter) {
 void split(char* string, char splitter, char splittedArr[][1024]) {
 	int len = strlen(string);
 	char tmp[len];
-	memset(tmp,'\0',strlen(tmp));
+	memset(tmp, 0, strlen(tmp));
 	int j = 0; //pointer for tmp string
 	int k = 0; //pointer for strings in splittedArr
 	for (int i = 0; i < len; i++) {
@@ -77,7 +79,31 @@ void split(char* string, char splitter, char splittedArr[][1024]) {
 			tmp[j] = '\0';
 			strcpy(splittedArr[k], tmp);
 			j = 0;
-			memset(tmp,'\0',strlen(tmp));
+			memset(tmp, 0, strlen(tmp));
+			k++;
+		}
+	}
+	if (string[len - 1] != splitter) { //Adding this check to get the last array
+		tmp[j] = '\0';
+		strcpy(splittedArr[k], tmp);
+	}
+}
+
+void split(char* string, char splitter, char splittedArr[][16384]) {
+	int len = strlen(string);
+	char tmp[len];
+	memset(tmp, 0, strlen(tmp));
+	int j = 0; //pointer for tmp string
+	int k = 0; //pointer for strings in splittedArr
+	for (int i = 0; i < len; i++) {
+		if (string[i] != splitter) {
+			tmp[j] = string[i];
+			j++;
+		} else {
+			tmp[j] = '\0';
+			strcpy(splittedArr[k], tmp);
+			j = 0;
+			memset(tmp, 0, strlen(tmp));
 			k++;
 		}
 	}

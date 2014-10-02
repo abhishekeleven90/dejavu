@@ -21,11 +21,6 @@
 using namespace std;
 
 //----------Constants---------
-#define SECOND 1000000
-#define QUEUE_LIMIT 5
-#define DATA_SIZE_LARGE 16384
-#define DATA_SIZE_KILO 1024
-
 #define MSG_JOIN "j:"
 #define MSG_DUMP "d:"
 #define MSG_DUMP_ALL "u:"
@@ -45,6 +40,8 @@ using namespace std;
 char ui_data[DATA_SIZE_KILO];
 char server_send_data[DATA_SIZE_LARGE], server_recv_data[DATA_SIZE_LARGE];
 char client_send_data[DATA_SIZE_LARGE], client_recv_data[DATA_SIZE_LARGE];
+char finger[DATA_SIZE_LARGE];
+char dumpAll[DATA_SIZE_TOO_LARGE];
 
 unsigned int server_port = 0;
 unsigned int remote_port = 0; // port with which to connect to server
@@ -58,8 +55,6 @@ int isJoined = false;
 int retry_count = 5;
 
 int isFirstJoin = true;
-
-Node* selfNode = new Node;
 
 //****************Function Declarations*******************
 //-------Helper Functions----------
@@ -76,9 +71,12 @@ void helperGet(char* getCmd);
 void helperFinger();
 void helperSuccessor();
 void helperPredecessor();
-void helperDump();
-void helperDumpAddr(char* dumpAddrCmd);
-void helperDumpAll();
+void helperDump(int isUnique);
+void helperUDump();
+void helperDumpAddr(char* dumpAddrCmd, int isUnique);
+void helperUDumpAddr(char* dumpAddrCmd);
+void helperDumpAll(int isUnique);
+void helperUDumpAll();
 
 void populateFingerTableSelf();
 void fillNodeEntries(struct sockaddr_in server_addr);
@@ -197,12 +195,31 @@ void helperHelp() {
 	cout << "dumpaddr <address>";
 	tab(2);
 	cout << "==> displays all information pertaining to node at address";
-	cout << " (eg - dump 111.111.111.111:1000)";
+	cout << " (eg - dumpaddr 111.111.111.111:1000)";
 
 	helperHelpNewCmd();
 	cout << "dumpall";
 	tab(4);
 	cout << "==> displays all information of all the nodes";
+
+	helperHelpNewCmd();
+	cout << "udump";
+	tab(4);
+	cout
+			<< "==> displays all information pertaining to calling node (does not print finger entries with selfIp)";
+
+	helperHelpNewCmd();
+	cout << "udumpaddr <address>";
+	tab(2);
+	cout
+			<< "==> displays all information pertaining to node at address (does not print finger entries with selfIp)";
+	cout << " (eg - udumpaddr 111.111.111.111:1000)";
+
+	helperHelpNewCmd();
+	cout << "udumpall";
+	tab(4);
+	cout
+			<< "==> displays all information of all the nodes (does not print finger entries with selfIp)";
 
 	cout << endl;
 }
@@ -302,11 +319,9 @@ void putInMyMap(char* dataVal) {
 	split(dataVal, ' ', dataValArr);
 
 	char* hexHashKey = (char *) malloc(sizeof(char) * 41);
-	//char hexHashKey[HASH_HEX_BITS];
 	data2hexHash(dataValArr[0], hexHashKey);
 
 	char* dataForMap = (char *) malloc(sizeof(char) * 1024);
-	//memset(dataForMap, '\0', KILO);
 
 	strcpy(dataForMap, dataValArr[0]);
 	strcat(dataForMap, "=>");
@@ -413,13 +428,12 @@ void helperFinger() {
 
 	strcpy(client_send_data, MSG_FINGER);
 
-	char finger[DATA_SIZE_LARGE];
 	memset(finger, 0, sizeof finger);
 	strcpy(finger, selfNode->self->ipWithPort);
 
 	nodeHelper* remoteNode = selfNode->successor;
 	while (strcmp(remoteNode->ipWithPort, selfNode->self->ipWithPort) != 0) {
-		strcat(finger, ",");
+		strcat(finger, NODE_DELIM_STR);
 		strcat(finger, remoteNode->ipWithPort);
 		connectToRemoteNode(remoteNode->ip, remoteNode->port);
 
@@ -427,11 +441,11 @@ void helperFinger() {
 	}
 
 	cout << "Got all the fingers, printing now: " << endl;
-	int occ = countOccurence(finger, ',') + 1;
-	char addressArr[occ][DATA_SIZE_KILO];
-	split(finger, ',', addressArr);
+	int occ = countOccurence(finger, NODE_DELIM_CHAR) + 1;
+
+	split(finger, NODE_DELIM_CHAR, GLOBAL_ARR);
 	for (int i = 0; i < occ; i++) {
-		cout << i << " -> " << addressArr[i] << endl;
+		cout << i << " -> " << GLOBAL_ARR[i] << endl;
 	}
 }
 
@@ -471,15 +485,19 @@ void helperPredecessor() {
 	cout << "Predecessor-> " << selfNode->predecessor->ipWithPort << endl;
 }
 
-void helperDump() {
+void helperDump(int isUnique = false) {
 	if (!checkIfPartOfNw(selfNode)) {
 		return;
 	}
 
-	printNodeDetails(selfNode);
+	printNodeDetails(selfNode, isUnique);
 }
 
-void getAndPrintDump(char *addr, unsigned int port) {
+void helperUDump() {
+	helperDump(true);
+}
+
+void getAndPrintDump(char *addr, unsigned int port, int isUnique) {
 	strcpy(client_send_data, MSG_DUMP);
 
 	retry_count = 5; //Modifying the retry count assuming server IP may be incorrect
@@ -490,19 +508,26 @@ void getAndPrintDump(char *addr, unsigned int port) {
 		//return;
 	}
 	cout << "Dump Received" << endl;
-	cout << client_recv_data << endl; //TO-DO: remove
-	//split()
+
+	printDump(client_recv_data, isUnique);
 }
 
-void helperDumpAddr(char* dumpAddrCmd) {
+void helperDumpAddr(char* dumpAddrCmd, int isUnique = false) {
 	if (!checkIfPartOfNw(selfNode)) {
 		return;
 	}
 
-	char* addr = fetchAddress(dumpAddrCmd, 10);
+	char* addr;
+	if (isUnique) {
+		addr = fetchAddress(dumpAddrCmd, 11);
+	} else {
+		addr = fetchAddress(dumpAddrCmd, 10);
+	}
+
 	if (addr == NULL) {
 		return;
 	}
+
 	unsigned int port = fetchPortNumber(dumpAddrCmd,
 			indexOf(dumpAddrCmd, ':') + 2);
 
@@ -510,10 +535,14 @@ void helperDumpAddr(char* dumpAddrCmd) {
 		//Invalid portNumber
 		return;
 	}
-	getAndPrintDump(addr, port);
+	getAndPrintDump(addr, port, isUnique);
 }
 
-void helperDumpAll() {
+void helperUDumpAddr(char* dumpAddrCmd) {
+	helperDumpAddr(dumpAddrCmd, true);
+}
+
+void helperDumpAll(int isUnique = false) {
 	if (!checkIfPartOfNw(selfNode)) {
 		return;
 	}
@@ -521,6 +550,40 @@ void helperDumpAll() {
 	strcpy(client_send_data, MSG_DUMP_ALL);
 
 	//getAndPrintDump();
+
+	memset(dumpAll, 0, sizeof dumpAll);
+	strcpy(dumpAll, "");
+	//Not adding my own details in dumpAll, shall use helperDump()
+
+	nodeHelper* remoteNode = selfNode->successor;
+	while (strcmp(remoteNode->ipWithPort, selfNode->self->ipWithPort) != 0) {
+		connectToRemoteNode(remoteNode->ip, remoteNode->port);
+
+		//findSucc
+		int startIndex = indexOf(client_recv_data, '?') + 2;
+		int lenSucc = strlen(client_recv_data) - startIndex + 1;
+		char* succ = substring(client_recv_data, startIndex, lenSucc);
+
+		strcat(dumpAll, substring(client_recv_data, 0, startIndex - 2));
+		strcat(dumpAll, NODE_DELIM_STR);
+
+		remoteNode = convertToNodeHelper(succ);
+	}
+
+	cout << "Got dump of all the nodes, printing now: " << endl;
+	int occ = countOccurence(dumpAll, NODE_DELIM_CHAR);
+
+	split(dumpAll, NODE_DELIM_CHAR, GLOBAL_ARR);
+
+	helperDump(isUnique); //to print my details
+	for (int i = 0; i < occ; i++) {
+		cout << i + 1 << " :: " << endl;
+		printDump(GLOBAL_ARR[i], isUnique);
+	}
+}
+
+void helperUDumpAll() {
+	helperDumpAll(true);
 }
 
 //populates finger table with all the self entries - only node in the network
@@ -534,7 +597,12 @@ void fillNodeEntries(struct sockaddr_in server_addr) {
 	nodeHelper* self = new nodeHelper();
 
 	char ip[IP_SIZE];
+	memset(ip, 0, sizeof ip);
 	getMyIp(ip);
+
+	if (strlen(ip) == 0) {
+		strcpy(ip, "127.0.0.1");
+	}
 
 	strcpy(self->ip, ip);
 
@@ -673,7 +741,8 @@ void processDump() {
 	strcat(server_send_data, "|");
 
 	for (int i = 0; i < M; i++) {
-		strcat(server_send_data, selfNode->fingerNode[i]->ipWithPort);
+		char* nodeIpWithPort = selfNode->fingerNode[i]->ipWithPort;
+		strcat(server_send_data, nodeIpWithPort);
 		strcat(server_send_data, ",");
 	}
 }
@@ -681,6 +750,9 @@ void processDump() {
 void processDumpAll() {
 	cout << "Received DumpAll request" << endl;
 	processDump();
+	//Adding successor ipWithPort, to be used by client to find my successors dump
+	strcat(server_send_data, "?");
+	strcat(server_send_data, selfNode->successor->ipWithPort);
 }
 
 void changeSuccAndFixFirstFinger(nodeHelper* succ) {
@@ -758,6 +830,18 @@ void userInput() {
 
 		else if (strcmp(cmdType, "dumpall") == 0) {
 			helperDumpAll();
+		}
+
+		else if (strcmp(cmdType, "udump") == 0) {
+			helperUDump();
+		}
+
+		else if (strcmp(cmdType, "udumpaddr") == 0) {
+			helperUDumpAddr(ui_data);
+		}
+
+		else if (strcmp(cmdType, "udumpall") == 0) {
+			helperUDumpAll();
 		}
 
 		else {

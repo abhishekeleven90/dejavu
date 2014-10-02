@@ -362,7 +362,7 @@ void resumeWaitingThreads(Thread_node *t_node) {
 }
 
 void moveThread(Thread_node *t_node, State fromState, State toState) {
-	int threadId = t_node->stats->threadID;
+	//int threadId = t_node->stats->threadID;
 	switch (toState) {
 	case RUNNING:
 		//cout << "Inside moveThread: toState as RUNNING not supported";

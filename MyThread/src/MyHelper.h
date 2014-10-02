@@ -1,6 +1,19 @@
 //----------Constants---------
 #define M 160	//number of bits
+#define SECOND 1000000
+#define QUEUE_LIMIT 5
+
+#define DATA_SIZE_TOO_LARGE 131072
+#define DATA_SIZE_LARGE 16384
+#define DATA_SIZE_KILO 1024
+
+#define NODE_DELIM_CHAR ';'
+#define NODE_DELIM_STR ";"
+
 //----------Globals---------
+char GLOBAL_ARR[M][DATA_SIZE_LARGE];
+char FINGER_ARR[M][DATA_SIZE_KILO];
+
 struct nodeHelper {
 	char nodeKey[HASH_HEX_BITS];
 	char ip[IP_SIZE];
@@ -18,6 +31,9 @@ struct Node {
 	keyMap dataValMap;
 };
 
+Node* helperNode = new Node;
+Node* selfNode = new Node;
+
 //****************Function Declarations*******************
 void joinIpWithPort(char* ip, unsigned int port, char* ipWithPort);
 
@@ -30,9 +46,10 @@ bool checkIfPartOfNw(Node* node);
 
 void printNotInNetworkErrorMessage();
 void printInNetworkErrorMessage();
-void printAllFingerTable(Node* node);
+void printAllFingerTable(Node* node, int isUnique);
 void printDataValMap(Node* node);
 void printNodeDetails(Node* node);
+void printDump(char* dumpData, int isUnique);
 
 void helperHelpNewCmd();
 
@@ -111,10 +128,17 @@ void printInNetworkErrorMessage() {
 	cout << "Hey!!! I am in the network, try again later" << endl;
 }
 
-void printAllFingerTable(Node* node) {
+void printAllFingerTable(Node* node, int isUnique) {
 	for (int i = 0; i < M; i++) {
-		cout << "start: " << node-> fingerStart[i] << ", ";
-		cout << "node: " << node-> fingerNode[i]->ipWithPort << endl;
+		char* nodeFinger = node-> fingerNode[i]->ipWithPort;
+
+		if (isUnique && strcmp(nodeFinger, node->self->ipWithPort) == 0) {
+			continue; //not printing self finger entries
+		}
+
+		cout << i << ": " << "\t";
+		cout << node-> fingerStart[i] << ", ";
+		cout << nodeFinger << endl;
 	}
 }
 
@@ -127,14 +151,40 @@ void printDataValMap(Node* node) {
 	}
 }
 
-void printNodeDetails(Node* node) {
-	cout << "self-> " << node->self->ipWithPort << endl;
-	cout << "Self Key-> " << node->self->nodeKey << endl;
+void printNodeDetails(Node* node, int isUnique) {
+	cout << "Node-> " << node->self->ipWithPort << endl;
+	cout << "Node Key-> " << node->self->nodeKey << endl;
 	cout << "Successor-> " << node->successor->ipWithPort << endl;
 	cout << "Predecessor-> " << node->predecessor->ipWithPort << endl;
 	cout << "Finger table: " << endl;
-	printAllFingerTable(node);
+	printAllFingerTable(node, isUnique);
 	printDataValMap(node);
+}
+
+void printDump(char* dumpData, int isUnique) {
+	split(dumpData, '|', GLOBAL_ARR);
+
+	split(GLOBAL_ARR[1], ',', FINGER_ARR);
+
+	for (int i = 0; i < M; i++) {
+		strcpy(helperNode->fingerStart[i], FINGER_ARR[i]);
+	}
+
+	split(GLOBAL_ARR[2], ',', FINGER_ARR);
+
+	for (int i = 0; i < M; i++) {
+		char* tmp = FINGER_ARR[i];
+		helperNode->fingerNode[i] = convertToNodeHelper(tmp);
+	}
+
+	char ipWithPort[3][DATA_SIZE_KILO];
+	split(GLOBAL_ARR[0], ',', ipWithPort);
+
+	helperNode->self = convertToNodeHelper(ipWithPort[0]);
+	helperNode->successor = convertToNodeHelper(ipWithPort[1]);
+	helperNode->predecessor = convertToNodeHelper(ipWithPort[2]);
+
+	printNodeDetails(helperNode, isUnique);
 }
 
 void helperHelpNewCmd() {
@@ -183,8 +233,10 @@ int getMyPort(int mySock) {
 			&& sin.sin_family == AF_INET && addrlen == sizeof(sin)) {
 		int local_port = ntohs(sin.sin_port);
 		return local_port;
-	} else
+	} else {
 		; // handle error
+	}
+	return 0;
 }
 
 nodeHelper* convertToNodeHelper(char *ipWithPort) {
