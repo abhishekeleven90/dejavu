@@ -69,6 +69,7 @@ void helperPort(char* portCmd);
 void helperCreate();
 void helperJoin(char* joinCmd);
 void helperQuit();
+
 void helperPut(char* putCmd);
 void helperGet(char* getCmd);
 
@@ -88,6 +89,7 @@ void askSuccToQuit();
 void processQuit(char *data);
 void processSucc();
 void processPred();
+
 void processFinger(char *data);
 void processChangeSucc(char *addr);
 void processChangePred(char *addr);
@@ -109,6 +111,7 @@ void changeSuccOfRemoteNodeToMyself(nodeHelper* remoteNode);
 void changePredOfRemoteNodeToMyself(nodeHelper* remoteNode);
 nodeHelper* find_successor(char key[]);
 nodeHelper* closest_preceding_finger(char key[]);
+void distributeKeys();//ab:
 
 //latest functions TO-DO remove
 nodeHelper* convertToNodeHelper(char *ipWithPort);
@@ -326,11 +329,9 @@ void putInMyMap(char* dataVal) {
 	//memset(dataForMap, '\0', KILO);
 
 	strcpy(dataForMap, dataValArr[0]);
-	strcat(dataForMap, "=>");
+	strcat(dataForMap, " ");//changed from =>to ' '
 	strcat(dataForMap, dataValArr[1]);
 	strcat(dataForMap, "\0");
-
-	cout << "ab: dataForMap " << dataForMap << endl;
 
 	insertInKeyMap(&selfNode->dataValMap, hexHashKey, dataForMap);
 
@@ -365,16 +366,15 @@ void helperPut(char* putCmd) {
 
 	//char hexHashKey[HASH_HEX_BITS];
 	data2hexHash(dataValArr[0], hexHashKey);
-	cout << "ab: hashexkey " << hexHashKey << endl;
 
 	nodeHelper* remoteNode = find_successor(hexHashKey);
 	if (strcmp(remoteNode->nodeKey, selfNode->self->nodeKey) == 0) {
-		cout << "ab: dataval " << dataVal << endl;
 		putInMyMap(dataVal);
 	}
 
 	else {
 		char tmp[3] = MSG_PUT;
+
 		strcpy(client_send_data, tmp);
 		strcat(client_send_data, dataVal);
 
@@ -579,6 +579,7 @@ void askSuccToQuit() {
 	run(clientThreadID);
 }
 
+
 void processJoin() {
 	cout << "Client wants to join" << endl;
 	if (isFirstJoin) {
@@ -655,9 +656,13 @@ void processChangeSucc(char *addr) {
 }
 
 void processChangePred(char *addr) {
-	cout << "client wants to change my pred to: " << addr << endl;
+	cout << "Client wants to change my pred to: " << addr << endl;
 
 	selfNode->predecessor = convertToNodeHelper(addr);
+	//THE TURNING POINT
+	//here is where we should actually call distributeKeys
+	//since last statement in join
+	distributeKeys();//ab:
 
 	server_send_data[0] = 'q';
 	server_send_data[1] = '\0';
@@ -996,6 +1001,30 @@ void fixFingers() {
 		}
 
 		fixFingerIndex++;
+	}
+}
+
+//I am going to distributeKeys to my pred
+void distributeKeys() {
+	cout<<"Will try and distribute keys since my pred changed"<<endl;
+	map<char*, char*>::iterator it;
+	for (map<char*, char*>::iterator it = (selfNode->dataValMap).begin(); it
+			!= (selfNode->dataValMap).end(); ++it) {
+		cout << it->first << " : " << it->second << '\n';
+		if (keyBelongCheck(selfNode->predecessor->nodeKey,
+				selfNode->self->nodeKey, it->first) or strcmp(it->first,
+				selfNode->self->nodeKey) == 0) {
+
+		} else {
+			cout<<"TRANSFERING a data val pair to my pred"<<endl;
+			char *cmd = (char *) malloc(sizeof(char) * 1024);
+			strcpy(cmd, "put ");
+			strcat(cmd, it->second);//should work fine, null character
+			strcat(cmd,"#");//shouldn't get printed on server insert should be fine
+			cout<<"Command USED: "<<cmd<<endl;
+			helperPut(cmd);//need To change
+			selfNode->dataValMap.erase(it->first);//last line
+		}
 	}
 }
 
