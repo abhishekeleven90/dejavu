@@ -889,6 +889,8 @@ void server() {
 		if (strcmp(type, MSG_QUIT) == 0) {
 			shutMe();
 		}
+
+		cout<<">>>:"<<endl;
 	}
 	//right now, doesn't reach here
 	close(sock);
@@ -904,10 +906,10 @@ bool connectToServer(int & sock) {
 		perror("Socket");
 		exit(1);
 	}
-	cout << "client socket created" << endl;
+	cout << "Client socket created" << endl;
 	server_addr.sin_family = AF_INET;
-	server_addr.sin_port = htons(remote_port);
 	server_addr.sin_addr = *((struct in_addr *) host->h_addr);
+	server_addr.sin_port = htons(remote_port);
 	bzero(&(server_addr.sin_zero), 8);
 
 	int retriedCount = 0;
@@ -916,23 +918,24 @@ bool connectToServer(int & sock) {
 
 		//trying again assuming the server is busy
 		retriedCount++;
-		cout << "server busy --- retrying(" << retriedCount << "/"
+		cout << "Server busy --- retrying(" << retriedCount << "/"
 				<< retry_count << ")" << endl;
 		sleep(1);
 		if (retriedCount == retry_count) {
 			cout
-					<< "server is not up or not responding, terminating client...please try again"
+					<< "Server is not up or not responding, terminating client...please try again"
 					<< endl;
 			close(sock);
 			return false;
 		}
 	}
-	cout << "client connected to server\n" << endl << endl;
+	cout << "Client successfully connected to server\n" << endl << endl;
 	return true;
 }
 
 void client() {
-	cout << "---client started---" << endl;
+	cout << "------------------------------" << endl;
+	cout << "Client started" << endl;
 
 	int sock, bytes_recieved;
 
@@ -949,6 +952,7 @@ void client() {
 	cout << "Data successfully received" << endl;
 	client_recv_data[bytes_recieved] = '\0';
 	close(sock);
+	cout << "------------------------------" << endl;
 }
 
 //-----------CHORD FUNCTIONS-------
