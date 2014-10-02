@@ -329,8 +329,8 @@ char* getFromMyMap(char* data) {
 
 	if (!isPresentInKeyMap((selfNode->dataValMap), hexHashKey)) {
 		cout << "Data not found for key: " << hexHashKey << endl;
-		char* toReturn =(char *)malloc(sizeof(char)*50);
-		strcpy(toReturn,"DATA NOT FOUND!!!");
+		char* toReturn = (char *) malloc(sizeof(char) * 50);
+		strcpy(toReturn, "DATA NOT FOUND!!!");
 		//return "DATA NOT FOUND!!!";
 		return toReturn;
 	}
@@ -982,6 +982,7 @@ void fixFingers() {
 		}
 
 		else {
+			cout<<"inside fixFingers: Entered here"<<endl;
 			selfNode->fingerNode[fixFingerIndex] = find_successor(key);
 		}
 
