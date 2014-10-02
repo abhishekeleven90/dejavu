@@ -647,7 +647,7 @@ void connectToRemoteNode(char* ip, unsigned int port) {
 	strcat(client_send_data, selfNode->self->ipWithPort);
 
 	//cout << "Inside connectToRemoteNode: clientsendData - " << client_send_data
-			//<< endl;
+	//<< endl;
 	int clientThreadID = create(client);
 	runClientAndWaitForResult(clientThreadID);
 }
@@ -986,7 +986,8 @@ void server() {
 bool connectToServer(int & sock) {
 	struct hostent *host;
 	struct sockaddr_in server_addr;
-	cout << "Inside connect to server: " << ip2Join << ":"<<remote_port<<endl;
+	cout << "Inside connect to server: " << ip2Join << ":" << remote_port
+			<< endl;
 	host = gethostbyname(ip2Join);
 
 	if ((sock = socket(AF_INET, SOCK_STREAM, 0)) == -1) {

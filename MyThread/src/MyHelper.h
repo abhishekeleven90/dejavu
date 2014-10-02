@@ -242,12 +242,12 @@ int getMyPort(int mySock) {
 nodeHelper* convertToNodeHelper(char *ipWithPort) {
 	nodeHelper* toReturn = new nodeHelper;
 
-	cout<<"inside convertToNodeHelper: ipWithPort "<<ipWithPort<<endl;
+	cout << "inside convertToNodeHelper: ipWithPort " << ipWithPort << endl;
 	strcpy(toReturn->ipWithPort, ipWithPort);
 	char* ipAddr = substring(ipWithPort, 0, indexOf(ipWithPort, ':'));
 	char* portString = substring(ipWithPort, indexOf(ipWithPort, ':') + 2,
 			strlen(ipWithPort));
-	cout<<"inside convertToNodeHelper: "<<portString<<endl;
+	cout << "inside convertToNodeHelper: " << portString << endl;
 	unsigned int portNum = atoi(portString);
 
 	strcpy(toReturn->ip, ipAddr);
