@@ -65,6 +65,7 @@ void helperPort(char* portCmd);
 void helperCreate();
 void helperJoin(char* joinCmd);
 void helperQuit();
+
 void helperPut(char* putCmd);
 void helperGet(char* getCmd);
 
@@ -86,6 +87,7 @@ void connectToRemoteNode(char* ip, unsigned int port);
 void processQuit(char *data);
 void processSucc();
 void processPred();
+
 void processFinger(char *data);
 void processChangeSucc(char *addr);
 void processChangePred(char *addr);
@@ -109,6 +111,7 @@ void changeSuccOfRemoteNodeToMyself(nodeHelper* remoteNode);
 void changePredOfRemoteNodeToMyself(nodeHelper* remoteNode);
 nodeHelper* find_successor(char key[]);
 nodeHelper* closest_preceding_finger(char key[]);
+void distributeKeys();//ab:
 
 nodeHelper* getKeySuccFromRemoteNode(nodeHelper* remoteNode, char key[]);
 
@@ -304,7 +307,7 @@ void helperJoin(char* joinCmd) {
 
 	cout << "My actual predecessor is now: "
 			<< selfNode->predecessor->ipWithPort << endl;
-	cout << "changing succ.pred & pred.succ to me" << endl;
+	cout << "Changing succ.pred & pred.succ to me" << endl;
 
 	changeSuccOfRemoteNodeToMyself(selfNode->predecessor);
 	changePredOfRemoteNodeToMyself(selfNode->successor);
@@ -324,11 +327,9 @@ void putInMyMap(char* dataVal) {
 	char* dataForMap = (char *) malloc(sizeof(char) * 1024);
 
 	strcpy(dataForMap, dataValArr[0]);
-	strcat(dataForMap, "=>");
+	strcat(dataForMap, " ");//changed from =>to ' '
 	strcat(dataForMap, dataValArr[1]);
 	strcat(dataForMap, "\0");
-
-	cout << "ab: dataForMap " << dataForMap << endl;
 
 	insertInKeyMap(&selfNode->dataValMap, hexHashKey, dataForMap);
 
@@ -343,7 +344,10 @@ char* getFromMyMap(char* data) {
 
 	if (!isPresentInKeyMap((selfNode->dataValMap), hexHashKey)) {
 		cout << "Data not found for key: " << hexHashKey << endl;
-		return "DATA NOT FOUND!!!";
+		char* toReturn = (char *) malloc(sizeof(char) * 50);
+		strcpy(toReturn, "DATA NOT FOUND!!!");
+		//return "DATA NOT FOUND!!!";
+		return toReturn;
 	}
 	return getFromKeyMap(selfNode->dataValMap, hexHashKey);
 }
@@ -363,11 +367,9 @@ void helperPut(char* putCmd) {
 
 	//char hexHashKey[HASH_HEX_BITS];
 	data2hexHash(dataValArr[0], hexHashKey);
-	cout << "ab: hashexkey " << hexHashKey << endl;
 
 	nodeHelper* remoteNode = find_successor(hexHashKey);
 	if (strcmp(remoteNode->nodeKey, selfNode->self->nodeKey) == 0) {
-		cout << "ab: dataval " << dataVal << endl;
 		putInMyMap(dataVal);
 	}
 
@@ -644,8 +646,8 @@ void connectToRemoteNode(char* ip, unsigned int port) {
 	strcat(client_send_data, "?");
 	strcat(client_send_data, selfNode->self->ipWithPort);
 
-	cout << "Inside connectToRemoteNode: clientsendData - " << client_send_data
-			<< endl;
+	//cout << "Inside connectToRemoteNode: clientsendData - " << client_send_data
+			//<< endl;
 	int clientThreadID = create(client);
 	runClientAndWaitForResult(clientThreadID);
 }
@@ -662,17 +664,17 @@ void processJoin() {
 }
 
 void processSucc() {
-	cout << "client wants my successor details" << endl;
+	cout << "Client wants my successor details" << endl;
 	strcpy(server_send_data, selfNode->successor->ipWithPort);
 }
 
 void processPred() {
-	cout << "client wants my predecessor details" << endl;
+	cout << "Client wants my predecessor details" << endl;
 	strcpy(server_send_data, selfNode->predecessor->ipWithPort);
 }
 
 void processFinger(char *data) {
-	cout << "client wants to find the fingers" << endl;
+	cout << "Client wants to find the fingers" << endl;
 	strcpy(server_send_data, selfNode->successor->ipWithPort);
 }
 
@@ -682,7 +684,7 @@ void processQuit(char *data) {
 }
 
 void processChangeSucc(char *addr) {
-	cout << "client wants to change my succ to: " << addr << endl;
+	cout << "Client wants to change my succ to: " << addr << endl;
 
 	changeSuccAndFixFirstFinger(convertToNodeHelper(addr));
 
@@ -690,22 +692,26 @@ void processChangeSucc(char *addr) {
 }
 
 void processChangePred(char *addr) {
-	cout << "client wants to change my pred to: " << addr << endl;
+	cout << "Client wants to change my pred to: " << addr << endl;
 
 	selfNode->predecessor = convertToNodeHelper(addr);
+	//THE TURNING POINT
+	//here is where we should actually call distributeKeys
+	//since last statement in join
+	distributeKeys();//ab:
 
 	strcpy(server_send_data, MSG_ACK);
 }
 
 void processPut(char *dataVal) {
-	cout << "client wants to put: " << dataVal << endl;
+	cout << "Client wants to put: " << dataVal << endl;
 	putInMyMap(dataVal);
 
 	strcpy(server_send_data, MSG_ACK);
 }
 
 void processGet(char *data) {
-	cout << "client wants to get val for: " << data << endl;
+	cout << "Client wants to get val for: " << data << endl;
 
 	char hexHashKey[HASH_HEX_BITS];
 	data2hexHash(data, hexHashKey);
@@ -770,7 +776,7 @@ void shutMe() {
 //-----TCP Functions-------
 void userInput() {
 	while (1) {
-		cout << "------------------------------" << endl;
+		cout << "\n------------------------------" << endl;
 
 		cout << ">>>: ";
 		fgets(ui_data, sizeof(ui_data), stdin);
@@ -846,7 +852,7 @@ void userInput() {
 
 		else {
 			cout
-					<< "sorry!!! It seems like you are new here, please type 'help' for list of commands"
+					<< "Sorry!!! It seems like you are new here, please type 'help' for list of commands"
 					<< endl;
 		}
 
@@ -911,6 +917,7 @@ void server() {
 
 		char dataValArr[2][DATA_SIZE_KILO];
 		split(data, '?', dataValArr);
+
 		cout << "Got request from: " << dataValArr[1] << endl;
 
 		char* reqData = dataValArr[0];
@@ -963,8 +970,9 @@ void server() {
 		}
 
 		send(connected, server_send_data, strlen(server_send_data), 0);
-		cout << "Done the required task, closing the connection" << endl
-				<< endl;
+		cout << "Done the required task, closing the connection" << endl;
+		cout << "------------------------------\n>>>:";
+		fflush(stdout);//may be fatal, adding for UI
 		close(connected);
 
 		if (strcmp(type, MSG_QUIT) == 0) {
@@ -978,17 +986,17 @@ void server() {
 bool connectToServer(int & sock) {
 	struct hostent *host;
 	struct sockaddr_in server_addr;
-	cout << "Inside connect to server: " << ip2Join << endl;
+	cout << "Inside connect to server: " << ip2Join << ":"<<remote_port<<endl;
 	host = gethostbyname(ip2Join);
 
 	if ((sock = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
 		perror("Socket");
 		exit(1);
 	}
-	cout << "client socket created" << endl;
+	//cout << "Client socket created" << endl;
 	server_addr.sin_family = AF_INET;
-	server_addr.sin_port = htons(remote_port);
 	server_addr.sin_addr = *((struct in_addr *) host->h_addr);
+	server_addr.sin_port = htons(remote_port);
 	bzero(&(server_addr.sin_zero), 8);
 
 	int retriedCount = 0;
@@ -997,23 +1005,24 @@ bool connectToServer(int & sock) {
 
 		//trying again assuming the server is busy
 		retriedCount++;
-		cout << "server busy --- retrying(" << retriedCount << "/"
+		cout << "Server busy --- retrying(" << retriedCount << "/"
 				<< retry_count << ")" << endl;
 		sleep(1);
 		if (retriedCount == retry_count) {
 			cout
-					<< "server is not up or not responding, terminating client...please try again"
+					<< "Server is not up or not responding, terminating client...please try again"
 					<< endl;
 			close(sock);
 			return false;
 		}
 	}
-	cout << "client connected to server\n" << endl << endl;
+	//cout << "Client successfully connected to server" << endl;
 	return true;
 }
 
 void client() {
-	cout << "---client started---" << endl;
+	cout << "\n------------------------------" << endl;
+	//cout << "Client started" << endl;
 
 	int sock, bytes_recieved;
 
@@ -1022,14 +1031,15 @@ void client() {
 		return;
 	}
 
-	cout << "Client socket ID:" << sock << endl;
+	//cout << "Client socket ID:" << sock << endl;
 
 	send(sock, client_send_data, strlen(client_send_data), 0);
 
 	bytes_recieved = recv(sock, client_recv_data, DATA_SIZE_LARGE, 0);
-	cout << "Data successfully received" << endl;
+	//cout << "Data successfully received" << endl;
 	client_recv_data[bytes_recieved] = '\0';
 	close(sock);
+	//cout << "------------------------------" << endl;
 }
 
 //-----------CHORD FUNCTIONS-------
@@ -1038,14 +1048,14 @@ void fixFingers() {
 
 	while (true) {
 		if (fixFingerIndex > M - 1) {
-			sleep(6);//TO-DO, may be fatal
+			sleep(5);//TO-DO, may be fatal
 			fixFingerIndex = 1;
 		}
 
 		char* key = selfNode->fingerStart[fixFingerIndex];
 		char* me = selfNode->self->nodeKey;
 		char* succKey = selfNode->successor->nodeKey;
-		char* predKey = selfNode->successor->nodeKey;
+		char* predKey = selfNode->predecessor->nodeKey;
 
 		if (strcmp(key, succKey) == 0 || keyBelongCheck(me, succKey, key)) {
 			selfNode->fingerNode[fixFingerIndex] = selfNode->successor;
@@ -1056,10 +1066,35 @@ void fixFingers() {
 		}
 
 		else {
+			//cout<<"inside fixFingers: Entered here"<<endl;
 			selfNode->fingerNode[fixFingerIndex] = find_successor(key);
 		}
 
 		fixFingerIndex++;
+	}
+}
+
+//I am going to distributeKeys to my pred
+void distributeKeys() {
+	cout << "Will try and distribute keys since my pred changed" << endl;
+	map<char*, char*>::iterator it;
+	for (map<char*, char*>::iterator it = (selfNode->dataValMap).begin(); it
+			!= (selfNode->dataValMap).end(); ++it) {
+		cout << it->first << " : " << it->second << '\n';
+		if (keyBelongCheck(selfNode->predecessor->nodeKey,
+				selfNode->self->nodeKey, it->first) or strcmp(it->first,
+				selfNode->self->nodeKey) == 0) {
+
+		} else {
+			cout << "TRANSFERING a data val pair to my pred" << endl;
+			char *cmd = (char *) malloc(sizeof(char) * 1024);
+			strcpy(cmd, "put ");
+			strcat(cmd, it->second);
+			strcat(cmd, "#");//shouldn't get printed on server insert should be fine
+			cout << "Command USED: " << cmd << endl;
+			helperPut(cmd);//can change
+			selfNode->dataValMap.erase(it->first);//last line
+		}
 	}
 }
 
