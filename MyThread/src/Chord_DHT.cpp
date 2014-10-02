@@ -83,7 +83,7 @@ void helperDumpAll();
 void populateFingerTableSelf();
 void fillNodeEntries(struct sockaddr_in server_addr);
 
-void connectToRemoteNode(nodeHelper* remoteNode);
+void connectToRemoteNode(char* ip, unsigned int port);
 
 void processQuit(char *data);
 void processSucc();
@@ -238,8 +238,8 @@ void helperJoin(char* joinCmd) {
 	if (addr == NULL) {
 		return;
 	}
-	unsigned int port = fetchPortNumber(joinCmd, indexOf(joinCmd, ':') + 2);
 
+	unsigned int port = fetchPortNumber(joinCmd, indexOf(joinCmd, ':') + 2);
 	if (port == 0) {
 		//Invalid portNumber
 		return;
@@ -264,7 +264,6 @@ void helperJoin(char* joinCmd) {
 	//Making the connection
 	strcpy(client_send_data, MSG_JOIN);
 	int clientThreadID = create(client);
-
 	runClientAndWaitForResult(clientThreadID);
 
 	if (client_recv_data[0] == SERVER_BUSY) {
@@ -275,21 +274,21 @@ void helperJoin(char* joinCmd) {
 		close(serverSock);
 		return;
 	}
-
 	cout << "Node joined to server" << endl;
-
 	retry_count = 9999; //Modifying the retry count for all the future connections
 
 	cout << "Asking the known remote node for my actual successor" << endl;
 	changeSuccAndFixFirstFinger(
 			getKeySuccFromRemoteNode(remoteNodeHelper, selfNode->self->nodeKey));
+
 	cout << "My actual successor is now: " << selfNode->successor->ipWithPort
 			<< endl;
 	selfNode->predecessor = get_PredFromRemoteNode(selfNode->successor);
+
 	cout << "My actual predecessor is now: "
 			<< selfNode->predecessor->ipWithPort << endl;
-
 	cout << "changing succ.pred & pred.succ to me" << endl;
+
 	changeSuccOfRemoteNodeToMyself(selfNode->predecessor);
 	changePredOfRemoteNodeToMyself(selfNode->successor);
 
@@ -361,7 +360,7 @@ void helperPut(char* putCmd) {
 		strcpy(client_send_data, MSG_PUT);
 		strcat(client_send_data, dataVal);
 
-		connectToRemoteNode(remoteNode);
+		connectToRemoteNode(remoteNode->ip, remoteNode->port);
 	}
 
 	cout << "Data inserted: " << dataVal << " with: " << hexHashKey << ", at: "
@@ -395,7 +394,7 @@ void helperGet(char* getCmd) {
 		strcpy(client_send_data, MSG_GET);
 		strcat(client_send_data, dataArr[0]);
 
-		connectToRemoteNode(remoteNode);
+		connectToRemoteNode(remoteNode->ip, remoteNode->port);
 		strcpy(dataVal, client_recv_data);
 	}
 
@@ -422,7 +421,7 @@ void helperFinger() {
 	while (strcmp(remoteNode->ipWithPort, selfNode->self->ipWithPort) != 0) {
 		strcat(finger, ",");
 		strcat(finger, remoteNode->ipWithPort);
-		connectToRemoteNode(remoteNode);
+		connectToRemoteNode(remoteNode->ip, remoteNode->port);
 
 		remoteNode = convertToNodeHelper(client_recv_data);
 	}
@@ -450,7 +449,7 @@ void helperQuit() {
 
 	nodeHelper* remoteNode = selfNode->successor;
 	while (strcmp(remoteNode->ipWithPort, selfNode->self->ipWithPort) != 0) {
-		connectToRemoteNode(remoteNode);
+		connectToRemoteNode(remoteNode->ip, remoteNode->port);
 		remoteNode = convertToNodeHelper(client_recv_data);
 	}
 
@@ -481,14 +480,12 @@ void helperDump() {
 }
 
 void getAndPrintDump(char *addr, unsigned int port) {
-	strcpy(ip2Join, addr);
-	remote_port = port;
-
 	strcpy(client_send_data, MSG_DUMP);
-	int clientThreadID = create(client);
+
 	retry_count = 5; //Modifying the retry count assuming server IP may be incorrect
-	runClientAndWaitForResult(clientThreadID);
+	connectToRemoteNode(addr, port);
 	retry_count = 9999; //Modifying the retry count for all the future connections
+
 	if (client_recv_data[0] == SERVER_BUSY) { //Server busy or does not exist
 		//return;
 	}
@@ -571,9 +568,13 @@ void fillNodeEntries(struct sockaddr_in server_addr) {
 	populateFingerTableSelf();
 }
 
-void connectToRemoteNode(nodeHelper* remoteNode) {
-	strcpy(ip2Join, remoteNode->ip);
-	remote_port = remoteNode->port;
+void connectToRemoteNode(char* ip, unsigned int port) {
+	strcpy(ip2Join, ip);
+	remote_port = port;
+
+	//Appending my information in the request
+	strcat(client_send_data, "?");
+	strcat(client_send_data, selfNode->self->ipWithPort);
 
 	cout << "Inside connectToRemoteNode: clientsendData - " << client_send_data
 			<< endl;
@@ -605,14 +606,6 @@ void processPred() {
 void processFinger(char *data) {
 	cout << "client wants to find the fingers" << endl;
 	strcpy(server_send_data, selfNode->successor->ipWithPort);
-}
-
-void shutMe() {
-	cout << "Shutting myself" << endl;
-	//cout << "Shutting myself after 5 sec" << endl;
-	//sleep(5);
-	close(serverSock);
-	clean();
 }
 
 void processQuit(char *data) {
@@ -693,6 +686,13 @@ void processDumpAll() {
 void changeSuccAndFixFirstFinger(nodeHelper* succ) {
 	selfNode->successor = succ;
 	selfNode->fingerNode[0] = succ;
+}
+
+void shutMe() {
+	cout << "Shutting myself after 5 sec" << endl;
+	sleep(5);
+	close(serverSock);
+	clean();
 }
 
 //-----TCP Functions-------
@@ -816,8 +816,8 @@ void server() {
 		connected
 				= accept(sock, (struct sockaddr*) ((&client_addr)), &sin_size);
 
-		cout << "I got a connection from" << inet_ntoa(client_addr.sin_addr)
-				<< ntohs(client_addr.sin_port) << endl;
+		/*cout << "I got a connection from" << inet_ntoa(client_addr.sin_addr)
+		 << ntohs(client_addr.sin_port) << endl;*/
 
 		bytes_received = recv(connected, server_recv_data, DATA_SIZE_LARGE, 0);
 		server_recv_data[bytes_received] = '\0';
@@ -825,8 +825,13 @@ void server() {
 		char* type = substring(server_recv_data, 0, 2);
 		char* data = substring(server_recv_data, 3, strlen(server_recv_data));
 
+		char dataValArr[2][DATA_SIZE_KILO];
+		split(data, '?', dataValArr);
+		cout << "Got request from: " << dataValArr[1] << endl;
+
+		char* reqData = dataValArr[0];
 		if (strcmp(type, MSG_QUIT) == 0) {
-			processQuit(data);
+			processQuit(reqData);
 		}
 
 		else if (strcmp(type, MSG_JOIN) == 0) {
@@ -842,11 +847,11 @@ void server() {
 		}
 
 		else if (strcmp(type, MSG_FINGER) == 0) {
-			processFinger(data);
+			processFinger(reqData);
 		}
 
 		else if (strcmp(type, MSG_KEY_SUCC) == 0) {
-			processKeySucc(data);
+			processKeySucc(reqData);
 		}
 
 		else if (strcmp(type, MSG_DUMP) == 0) {
@@ -858,23 +863,24 @@ void server() {
 		}
 
 		else if (strcmp(type, MSG_CHNG_SUCC) == 0) {
-			processChangeSucc(data);
+			processChangeSucc(reqData);
 		}
 
 		else if (strcmp(type, MSG_CHNG_PRED) == 0) {
-			processChangePred(data);
+			processChangePred(reqData);
 		}
 
 		else if (strcmp(type, MSG_PUT) == 0) {
-			processPut(data);
+			processPut(reqData);
 		}
 
 		else if (strcmp(type, MSG_GET) == 0) {
-			processGet(data);
+			processGet(reqData);
 		}
 
 		send(connected, server_send_data, strlen(server_send_data), 0);
-		cout << "Done the required task, closing the connection" << endl;
+		cout << "Done the required task, closing the connection" << endl
+				<< endl;
 		close(connected);
 
 		if (strcmp(type, MSG_QUIT) == 0) {
@@ -918,7 +924,7 @@ bool connectToServer(int & sock) {
 			return false;
 		}
 	}
-	cout << "client connected to server\n" << endl;
+	cout << "client connected to server\n" << endl << endl;
 	return true;
 }
 
@@ -976,7 +982,7 @@ void fixFingers() {
 nodeHelper* get_SuccFromRemoteNode(nodeHelper* remoteNode) {
 	strcpy(client_send_data, MSG_NODE_SUCC);
 
-	connectToRemoteNode(remoteNode);
+	connectToRemoteNode(remoteNode->ip, remoteNode->port);
 	cout << "Got the successor from remote node: " << client_recv_data << endl;
 	return convertToNodeHelper(client_recv_data);
 }
@@ -984,7 +990,7 @@ nodeHelper* get_SuccFromRemoteNode(nodeHelper* remoteNode) {
 nodeHelper* get_PredFromRemoteNode(nodeHelper* remoteNode) {
 	strcpy(client_send_data, MSG_NODE_PRED);
 
-	connectToRemoteNode(remoteNode);
+	connectToRemoteNode(remoteNode->ip, remoteNode->port);
 	cout << "Got the predecessor from remote node: " << client_recv_data
 			<< endl;
 	return convertToNodeHelper(client_recv_data);
@@ -994,7 +1000,7 @@ void changeSuccOfRemoteNodeToMyself(nodeHelper* remoteNode) {
 	strcpy(client_send_data, MSG_CHNG_SUCC);
 	strcat(client_send_data, selfNode->self->ipWithPort);
 
-	connectToRemoteNode(remoteNode);
+	connectToRemoteNode(remoteNode->ip, remoteNode->port);
 	cout << "Changed the successor of remote node to myself" << endl;
 }
 
@@ -1002,7 +1008,7 @@ void changePredOfRemoteNodeToMyself(nodeHelper* remoteNode) {
 	strcpy(client_send_data, MSG_CHNG_PRED);
 	strcat(client_send_data, selfNode->self->ipWithPort);
 
-	connectToRemoteNode(remoteNode);
+	connectToRemoteNode(remoteNode->ip, remoteNode->port);
 	cout << "Changed the predecessor of remote node to myself" << endl;
 }
 
@@ -1036,7 +1042,7 @@ nodeHelper* getKeySuccFromRemoteNode(nodeHelper* remoteNode, char key[]) {
 	strcpy(client_send_data, MSG_KEY_SUCC); //we will be acting as client to send data
 	strcat(client_send_data, key);
 
-	connectToRemoteNode(remoteNode);
+	connectToRemoteNode(remoteNode->ip, remoteNode->port);
 
 	cout << "Data received from remote node " << client_recv_data << endl;
 	return convertToNodeHelper(client_recv_data);
