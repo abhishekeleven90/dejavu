@@ -36,6 +36,11 @@ void printNodeDetails(Node* node);
 
 void helperHelpNewCmd();
 
+void getMyIp(char* ip);
+int getMyPort(int mySock);
+
+nodeHelper* convertToNodeHelper(char *ipWithPort);
+
 //****************Function Definitions*******************
 void joinIpWithPort(char* ip, unsigned int port, char* ipWithPort) {
 	char portChar[10];
@@ -180,4 +185,23 @@ int getMyPort(int mySock) {
 		return local_port;
 	} else
 		; // handle error
+}
+
+nodeHelper* convertToNodeHelper(char *ipWithPort) {
+	nodeHelper* toReturn = new nodeHelper;
+
+	strcpy(toReturn->ipWithPort, ipWithPort);
+	char* ipAddr = substring(ipWithPort, 0, indexOf(ipWithPort, ':'));
+	char* portString = substring(ipWithPort, indexOf(ipWithPort, ':') + 2,
+			strlen(ipWithPort));
+	unsigned int portNum = atoi(portString);
+
+	strcpy(toReturn->ip, ipAddr);
+	toReturn->port = portNum;
+
+	char hexHash[HASH_HEX_BITS];
+	data2hexHash(toReturn->ipWithPort, hexHash);
+	strcpy(toReturn->nodeKey, hexHash);
+
+	return toReturn;
 }
