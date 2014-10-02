@@ -220,7 +220,7 @@ void helperHelp() {
 
 	helperHelpNewCmd();
 	cout << "udumpall";
-	tab(4);
+	tab(3);
 	cout
 			<< "==> displays all information of all the nodes (does not print finger entries with selfIp)";
 
@@ -664,12 +664,12 @@ void processJoin() {
 }
 
 void processSucc() {
-	cout << "Client wants my successor details" << endl;
+	//cout << "Client wants my successor details" << endl;
 	strcpy(server_send_data, selfNode->successor->ipWithPort);
 }
 
 void processPred() {
-	cout << "Client wants my predecessor details" << endl;
+	//cout << "Client wants my predecessor details" << endl;
 	strcpy(server_send_data, selfNode->predecessor->ipWithPort);
 }
 
@@ -684,7 +684,7 @@ void processQuit(char *data) {
 }
 
 void processChangeSucc(char *addr) {
-	cout << "Client wants to change my succ to: " << addr << endl;
+	//cout << "Client wants to change my succ to: " << addr << endl;
 
 	changeSuccAndFixFirstFinger(convertToNodeHelper(addr));
 
@@ -692,7 +692,7 @@ void processChangeSucc(char *addr) {
 }
 
 void processChangePred(char *addr) {
-	cout << "Client wants to change my pred to: " << addr << endl;
+	//cout << "Client wants to change my pred to: " << addr << endl;
 
 	selfNode->predecessor = convertToNodeHelper(addr);
 	//THE TURNING POINT
@@ -722,8 +722,8 @@ void processGet(char *data) {
 }
 
 void processKeySucc(char *keyToSearch) {
-	cout << "Client requests for finding Node successor of this key: "
-			<< keyToSearch << endl;
+	/*cout << "Client requests for finding Node successor of this key: "
+	 << keyToSearch << endl;*/
 	nodeHelper* toReturn = find_successor(keyToSearch);
 	strcpy(server_send_data, toReturn->ipWithPort);
 }
@@ -918,7 +918,7 @@ void server() {
 		char dataValArr[2][DATA_SIZE_KILO];
 		split(data, '?', dataValArr);
 
-		cout << "Got request from: " << dataValArr[1] << endl;
+		//cout << "Got request from: " << dataValArr[1] << endl;
 
 		char* reqData = dataValArr[0];
 		if (strcmp(type, MSG_QUIT) == 0) {
@@ -970,8 +970,8 @@ void server() {
 		}
 
 		send(connected, server_send_data, strlen(server_send_data), 0);
-		cout << "Done the required task, closing the connection" << endl;
-		cout << "------------------------------\n>>>:";
+		//cout << "Done the required task, closing the connection" << endl;
+		//cout << "------------------------------\n>>>:";
 		fflush(stdout);//may be fatal, adding for UI
 		close(connected);
 
@@ -986,8 +986,8 @@ void server() {
 bool connectToServer(int & sock) {
 	struct hostent *host;
 	struct sockaddr_in server_addr;
-	cout << "Inside connect to server: " << ip2Join << ":" << remote_port
-			<< endl;
+	/*cout << "Inside connect to server: " << ip2Join << ":" << remote_port
+	 << endl;*/
 	host = gethostbyname(ip2Join);
 
 	if ((sock = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
@@ -1022,7 +1022,7 @@ bool connectToServer(int & sock) {
 }
 
 void client() {
-	cout << "\n------------------------------" << endl;
+	//cout << "\n------------------------------" << endl;
 	//cout << "Client started" << endl;
 
 	int sock, bytes_recieved;
@@ -1103,7 +1103,7 @@ nodeHelper* get_SuccFromRemoteNode(nodeHelper* remoteNode) {
 	strcpy(client_send_data, MSG_NODE_SUCC);
 
 	connectToRemoteNode(remoteNode->ip, remoteNode->port);
-	cout << "Got the successor from remote node: " << client_recv_data << endl;
+	//cout << "Got the successor from remote node: " << client_recv_data << endl;
 	return convertToNodeHelper(client_recv_data);
 }
 
@@ -1111,8 +1111,8 @@ nodeHelper* get_PredFromRemoteNode(nodeHelper* remoteNode) {
 	strcpy(client_send_data, MSG_NODE_PRED);
 
 	connectToRemoteNode(remoteNode->ip, remoteNode->port);
-	cout << "Got the predecessor from remote node: " << client_recv_data
-			<< endl;
+	//cout << "Got the predecessor from remote node: " << client_recv_data
+	//<< endl;
 	return convertToNodeHelper(client_recv_data);
 }
 
@@ -1121,7 +1121,7 @@ void changeSuccOfRemoteNodeToMyself(nodeHelper* remoteNode) {
 	strcat(client_send_data, selfNode->self->ipWithPort);
 
 	connectToRemoteNode(remoteNode->ip, remoteNode->port);
-	cout << "Changed the successor of remote node to myself" << endl;
+	//cout << "Changed the successor of remote node to myself" << endl;
 }
 
 void changePredOfRemoteNodeToMyself(nodeHelper* remoteNode) {
@@ -1129,7 +1129,7 @@ void changePredOfRemoteNodeToMyself(nodeHelper* remoteNode) {
 	strcat(client_send_data, selfNode->self->ipWithPort);
 
 	connectToRemoteNode(remoteNode->ip, remoteNode->port);
-	cout << "Changed the predecessor of remote node to myself" << endl;
+	//cout << "Changed the predecessor of remote node to myself" << endl;
 }
 
 nodeHelper* find_successor(char key[]) {
@@ -1164,7 +1164,7 @@ nodeHelper* getKeySuccFromRemoteNode(nodeHelper* remoteNode, char key[]) {
 
 	connectToRemoteNode(remoteNode->ip, remoteNode->port);
 
-	cout << "Data received from remote node " << client_recv_data << endl;
+	//cout << "Data received from remote node " << client_recv_data << endl;
 	return convertToNodeHelper(client_recv_data);
 }
 
