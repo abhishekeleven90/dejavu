@@ -816,9 +816,8 @@ void server() {
 		connected
 				= accept(sock, (struct sockaddr*) ((&client_addr)), &sin_size);
 
-		printf("\n I got a connection from (%s , %d)",
-				inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port))
-				<< endl;
+		cout << "I got a connection from" << inet_ntoa(client_addr.sin_addr)
+				<< ntohs(client_addr.sin_port) << endl;
 
 		bytes_received = recv(connected, server_recv_data, DATA_SIZE_LARGE, 0);
 		server_recv_data[bytes_received] = '\0';
