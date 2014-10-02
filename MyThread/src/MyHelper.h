@@ -195,7 +195,7 @@ nodeHelper* convertToNodeHelper(char *ipWithPort) {
 	char* ipAddr = substring(ipWithPort, 0, indexOf(ipWithPort, ':'));
 	char* portString = substring(ipWithPort, indexOf(ipWithPort, ':') + 2,
 			strlen(ipWithPort));
-	cout<<"inside convertToNodeHelper: portString "<<portString<<endl;
+	cout<<"inside convertToNodeHelper: "<<portString<<endl;
 	unsigned int portNum = atoi(portString);
 
 	strcpy(toReturn->ip, ipAddr);

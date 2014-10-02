@@ -578,8 +578,8 @@ void connectToRemoteNode(char* ip, unsigned int port) {
 	strcat(client_send_data, "?");
 	strcat(client_send_data, selfNode->self->ipWithPort);
 
-	cout << "Inside connectToRemoteNode: clientsendData - " << client_send_data
-			<< endl;
+	//cout << "Inside connectToRemoteNode: clientsendData - " << client_send_data
+			//<< endl;
 	int clientThreadID = create(client);
 	runClientAndWaitForResult(clientThreadID);
 }
@@ -704,7 +704,7 @@ void shutMe() {
 //-----TCP Functions-------
 void userInput() {
 	while (1) {
-		cout << "------------------------------" << endl;
+		cout << "\n------------------------------" << endl;
 
 		cout << ">>>: ";
 		fgets(ui_data, sizeof(ui_data), stdin);
@@ -902,14 +902,14 @@ void server() {
 bool connectToServer(int & sock) {
 	struct hostent *host;
 	struct sockaddr_in server_addr;
-	cout << "Inside connect to server: " << ip2Join << endl;
+	cout << "Inside connect to server: " << ip2Join << ":"<<remote_port<<endl;
 	host = gethostbyname(ip2Join);
 
 	if ((sock = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
 		perror("Socket");
 		exit(1);
 	}
-	cout << "Client socket created" << endl;
+	//cout << "Client socket created" << endl;
 	server_addr.sin_family = AF_INET;
 	server_addr.sin_addr = *((struct in_addr *) host->h_addr);
 	server_addr.sin_port = htons(remote_port);
@@ -932,13 +932,13 @@ bool connectToServer(int & sock) {
 			return false;
 		}
 	}
-	cout << "Client successfully connected to server" << endl;
+	//cout << "Client successfully connected to server" << endl;
 	return true;
 }
 
 void client() {
-	cout << "------------------------------" << endl;
-	cout << "Client started" << endl;
+	cout << "\n------------------------------" << endl;
+	//cout << "Client started" << endl;
 
 	int sock, bytes_recieved;
 
@@ -947,15 +947,15 @@ void client() {
 		return;
 	}
 
-	cout << "Client socket ID:" << sock << endl;
+	//cout << "Client socket ID:" << sock << endl;
 
 	send(sock, client_send_data, strlen(client_send_data), 0);
 
 	bytes_recieved = recv(sock, client_recv_data, DATA_SIZE_LARGE, 0);
-	cout << "Data successfully received" << endl;
+	//cout << "Data successfully received" << endl;
 	client_recv_data[bytes_recieved] = '\0';
 	close(sock);
-	cout << "------------------------------" << endl;
+	//cout << "------------------------------" << endl;
 }
 
 //-----------CHORD FUNCTIONS-------
@@ -964,14 +964,14 @@ void fixFingers() {
 
 	while (true) {
 		if (fixFingerIndex > M - 1) {
-			sleep(6);//TO-DO, may be fatal
+			sleep(5);//TO-DO, may be fatal
 			fixFingerIndex = 1;
 		}
 
 		char* key = selfNode->fingerStart[fixFingerIndex];
 		char* me = selfNode->self->nodeKey;
 		char* succKey = selfNode->successor->nodeKey;
-		char* predKey = selfNode->successor->nodeKey;
+		char* predKey = selfNode->predecessor->nodeKey;
 
 		if (strcmp(key, succKey) == 0 || keyBelongCheck(me, succKey, key)) {
 			selfNode->fingerNode[fixFingerIndex] = selfNode->successor;
@@ -982,7 +982,7 @@ void fixFingers() {
 		}
 
 		else {
-			cout<<"inside fixFingers: Entered here"<<endl;
+			//cout<<"inside fixFingers: Entered here"<<endl;
 			selfNode->fingerNode[fixFingerIndex] = find_successor(key);
 		}
 
