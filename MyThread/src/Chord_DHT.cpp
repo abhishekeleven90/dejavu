@@ -290,7 +290,7 @@ void helperJoin(char* joinCmd) {
 
 	cout << "My actual predecessor is now: "
 			<< selfNode->predecessor->ipWithPort << endl;
-	cout << "changing succ.pred & pred.succ to me" << endl;
+	cout << "Changing succ.pred & pred.succ to me" << endl;
 
 	changeSuccOfRemoteNodeToMyself(selfNode->predecessor);
 	changePredOfRemoteNodeToMyself(selfNode->successor);
@@ -329,7 +329,10 @@ char* getFromMyMap(char* data) {
 
 	if (!isPresentInKeyMap((selfNode->dataValMap), hexHashKey)) {
 		cout << "Data not found for key: " << hexHashKey << endl;
-		return "DATA NOT FOUND!!!";
+		char* toReturn =(char *)malloc(sizeof(char)*50);
+		strcpy(toReturn,"DATA NOT FOUND!!!");
+		//return "DATA NOT FOUND!!!";
+		return toReturn;
 	}
 	return getFromKeyMap(selfNode->dataValMap, hexHashKey);
 }
@@ -593,17 +596,17 @@ void processJoin() {
 }
 
 void processSucc() {
-	cout << "client wants my successor details" << endl;
+	cout << "Client wants my successor details" << endl;
 	strcpy(server_send_data, selfNode->successor->ipWithPort);
 }
 
 void processPred() {
-	cout << "client wants my predecessor details" << endl;
+	cout << "Client wants my predecessor details" << endl;
 	strcpy(server_send_data, selfNode->predecessor->ipWithPort);
 }
 
 void processFinger(char *data) {
-	cout << "client wants to find the fingers" << endl;
+	cout << "Client wants to find the fingers" << endl;
 	strcpy(server_send_data, selfNode->successor->ipWithPort);
 }
 
@@ -613,7 +616,7 @@ void processQuit(char *data) {
 }
 
 void processChangeSucc(char *addr) {
-	cout << "client wants to change my succ to: " << addr << endl;
+	cout << "Client wants to change my succ to: " << addr << endl;
 
 	changeSuccAndFixFirstFinger(convertToNodeHelper(addr));
 
@@ -633,14 +636,14 @@ void processChangePred(char *addr) {
 }
 
 void processPut(char *dataVal) {
-	cout << "client wants to put: " << dataVal << endl;
+	cout << "Client wants to put: " << dataVal << endl;
 	putInMyMap(dataVal);
 
 	strcpy(server_send_data, MSG_ACK);
 }
 
 void processGet(char *data) {
-	cout << "client wants to get val for: " << data << endl;
+	cout << "Client wants to get val for: " << data << endl;
 
 	char hexHashKey[HASH_HEX_BITS];
 	data2hexHash(data, hexHashKey);
@@ -765,7 +768,7 @@ void userInput() {
 
 		else {
 			cout
-					<< "sorry!!! It seems like you are new here, please type 'help' for list of commands"
+					<< "Sorry!!! It seems like you are new here, please type 'help' for list of commands"
 					<< endl;
 		}
 
@@ -830,6 +833,7 @@ void server() {
 
 		char dataValArr[2][DATA_SIZE_KILO];
 		split(data, '?', dataValArr);
+
 		cout << "Got request from: " << dataValArr[1] << endl;
 
 		char* reqData = dataValArr[0];
@@ -882,15 +886,14 @@ void server() {
 		}
 
 		send(connected, server_send_data, strlen(server_send_data), 0);
-		cout << "Done the required task, closing the connection" << endl
-				<< endl;
+		cout << "Done the required task, closing the connection" << endl;
+		cout << "------------------------------\n>>>:";
+		fflush(stdout);//may be fatal, adding for UI
 		close(connected);
 
 		if (strcmp(type, MSG_QUIT) == 0) {
 			shutMe();
 		}
-
-		cout<<">>>:"<<endl;
 	}
 	//right now, doesn't reach here
 	close(sock);
@@ -929,7 +932,7 @@ bool connectToServer(int & sock) {
 			return false;
 		}
 	}
-	cout << "Client successfully connected to server\n" << endl << endl;
+	cout << "Client successfully connected to server" << endl;
 	return true;
 }
 
@@ -1001,10 +1004,10 @@ void distributeKeys() {
 			cout << "TRANSFERING a data val pair to my pred" << endl;
 			char *cmd = (char *) malloc(sizeof(char) * 1024);
 			strcpy(cmd, "put ");
-			strcat(cmd, it->second);//should work fine, null character
+			strcat(cmd, it->second);
 			strcat(cmd, "#");//shouldn't get printed on server insert should be fine
 			cout << "Command USED: " << cmd << endl;
-			helperPut(cmd);//need To change
+			helperPut(cmd);//can change
 			selfNode->dataValMap.erase(it->first);//last line
 		}
 	}
