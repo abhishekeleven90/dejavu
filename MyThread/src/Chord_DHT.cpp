@@ -23,8 +23,8 @@ using namespace std;
 //----------Constants---------
 #define SECOND 1000000
 #define QUEUE_LIMIT 5
-#define DATA_SIZE 16384
-#define KILO 1024
+#define DATA_SIZE_LARGE 16384
+#define DATA_SIZE_KILO 1024
 
 #define MSG_JOIN "j:"
 #define MSG_DUMP "d:"
@@ -38,12 +38,13 @@ using namespace std;
 #define MSG_FINGER "f:"
 #define MSG_PUT "i:"
 #define MSG_GET "g:"
+#define MSG_ACK "m:"
 #define SERVER_BUSY 'x'
 
 //----------Globals---------
-char ui_data[KILO];
-char server_send_data[DATA_SIZE], server_recv_data[DATA_SIZE];
-char client_send_data[DATA_SIZE], client_recv_data[DATA_SIZE];
+char ui_data[DATA_SIZE_KILO];
+char server_send_data[DATA_SIZE_LARGE], server_recv_data[DATA_SIZE_LARGE];
+char client_send_data[DATA_SIZE_LARGE], client_recv_data[DATA_SIZE_LARGE];
 
 unsigned int server_port = 0;
 unsigned int remote_port = 0; // port with which to connect to server
@@ -83,8 +84,7 @@ void helperDumpAll();
 void populateFingerTableSelf();
 void fillNodeEntries(struct sockaddr_in server_addr);
 
-void askSuccForFinger();
-void askSuccToQuit();
+void connectToRemoteNode(char* ip, unsigned int port);
 
 void processQuit(char *data);
 void processSucc();
@@ -97,6 +97,8 @@ void processKeySucc(char *keyToSearch);
 void processDump();
 
 void changeSuccAndFixFirstFinger(nodeHelper* succ);
+
+void shutMe();
 
 //-----TCP Functions-------
 void userInput();
@@ -113,8 +115,6 @@ nodeHelper* find_successor(char key[]);
 nodeHelper* closest_preceding_finger(char key[]);
 void distributeKeys();//ab:
 
-//latest functions TO-DO remove
-nodeHelper* convertToNodeHelper(char *ipWithPort);
 nodeHelper* getKeySuccFromRemoteNode(nodeHelper* remoteNode, char key[]);
 
 //****************Function Definitions*******************
@@ -241,8 +241,8 @@ void helperJoin(char* joinCmd) {
 	if (addr == NULL) {
 		return;
 	}
-	unsigned int port = fetchPortNumber(joinCmd, indexOf(joinCmd, ':') + 2);
 
+	unsigned int port = fetchPortNumber(joinCmd, indexOf(joinCmd, ':') + 2);
 	if (port == 0) {
 		//Invalid portNumber
 		return;
@@ -265,10 +265,8 @@ void helperJoin(char* joinCmd) {
 	helperCreate();
 
 	//Making the connection
-	char tmp[3] = MSG_JOIN;
-	strcpy(client_send_data, tmp);
+	strcpy(client_send_data, MSG_JOIN);
 	int clientThreadID = create(client);
-
 	runClientAndWaitForResult(clientThreadID);
 
 	if (client_recv_data[0] == SERVER_BUSY) {
@@ -279,21 +277,21 @@ void helperJoin(char* joinCmd) {
 		close(serverSock);
 		return;
 	}
-
 	cout << "Node joined to server" << endl;
-
 	retry_count = 9999; //Modifying the retry count for all the future connections
 
 	cout << "Asking the known remote node for my actual successor" << endl;
 	changeSuccAndFixFirstFinger(
 			getKeySuccFromRemoteNode(remoteNodeHelper, selfNode->self->nodeKey));
+
 	cout << "My actual successor is now: " << selfNode->successor->ipWithPort
 			<< endl;
 	selfNode->predecessor = get_PredFromRemoteNode(selfNode->successor);
+
 	cout << "My actual predecessor is now: "
 			<< selfNode->predecessor->ipWithPort << endl;
-
 	cout << "changing succ.pred & pred.succ to me" << endl;
+
 	changeSuccOfRemoteNodeToMyself(selfNode->predecessor);
 	changePredOfRemoteNodeToMyself(selfNode->successor);
 
@@ -301,24 +299,9 @@ void helperJoin(char* joinCmd) {
 	run(fixFingersID);
 }
 
-void helperQuit() {
-	if (!checkIfPartOfNw(selfNode)) {
-		return;
-	}
-
-	cout
-			<< "Asking all the nodes to shut down, Thanks for using chord_DHT, see you again soon :)"
-			<< endl;
-
-	char tmp[3] = MSG_QUIT;
-	strcpy(client_send_data, tmp);
-	strcat(client_send_data, selfNode->self->ipWithPort);
-	askSuccToQuit();
-}
-
 void putInMyMap(char* dataVal) {
 
-	char dataValArr[2][KILO];
+	char dataValArr[2][DATA_SIZE_KILO];
 	split(dataVal, ' ', dataValArr);
 
 	char* hexHashKey = (char *) malloc(sizeof(char) * 41);
@@ -360,7 +343,7 @@ void helperPut(char* putCmd) {
 	char *hexHashKey = (char *) malloc(sizeof(char) * 41);
 	strcpy(dataVal, substring(putCmd, 5, strlen(putCmd) - 5));
 
-	char dataValArr[2][KILO];
+	char dataValArr[2][DATA_SIZE_KILO];
 
 	split(dataVal, ' ', dataValArr);
 
@@ -373,16 +356,10 @@ void helperPut(char* putCmd) {
 	}
 
 	else {
-		char tmp[3] = MSG_PUT;
-
-		strcpy(client_send_data, tmp);
+		strcpy(client_send_data, MSG_PUT);
 		strcat(client_send_data, dataVal);
 
-		strcpy(ip2Join, remoteNode->ip);
-		remote_port = remoteNode->port;
-
-		int clientThreadID = create(client);
-		runClientAndWaitForResult(clientThreadID);
+		connectToRemoteNode(remoteNode->ip, remoteNode->port);
 	}
 
 	cout << "Data inserted: " << dataVal << " with: " << hexHashKey << ", at: "
@@ -396,10 +373,10 @@ void helperGet(char* getCmd) {
 	}
 	char dataVal[1024];
 
-	char data[KILO];
+	char data[DATA_SIZE_KILO];
 	strcpy(data, substring(getCmd, 5, strlen(getCmd) - 5));
 
-	char dataArr[1][KILO];
+	char dataArr[1][DATA_SIZE_KILO];
 
 	split(data, ' ', dataArr);
 
@@ -413,15 +390,10 @@ void helperGet(char* getCmd) {
 	}
 
 	else {
-		char tmp[3] = MSG_GET;
-		strcpy(client_send_data, tmp);
+		strcpy(client_send_data, MSG_GET);
 		strcat(client_send_data, dataArr[0]);
 
-		strcpy(ip2Join, remoteNode->ip);
-		remote_port = remoteNode->port;
-
-		int clientThreadID = create(client);
-		runClientAndWaitForResult(clientThreadID);
+		connectToRemoteNode(remoteNode->ip, remoteNode->port);
 		strcpy(dataVal, client_recv_data);
 	}
 
@@ -438,9 +410,50 @@ void helperFinger() {
 		return;
 	}
 
-	char tmp[3] = MSG_FINGER;
-	strcpy(client_send_data, tmp);
-	askSuccForFinger();
+	strcpy(client_send_data, MSG_FINGER);
+
+	char finger[DATA_SIZE_LARGE];
+	memset(finger, 0, sizeof finger);
+	strcpy(finger, selfNode->self->ipWithPort);
+
+	nodeHelper* remoteNode = selfNode->successor;
+	while (strcmp(remoteNode->ipWithPort, selfNode->self->ipWithPort) != 0) {
+		strcat(finger, ",");
+		strcat(finger, remoteNode->ipWithPort);
+		connectToRemoteNode(remoteNode->ip, remoteNode->port);
+
+		remoteNode = convertToNodeHelper(client_recv_data);
+	}
+
+	cout << "Got all the fingers, printing now: " << endl;
+	int occ = countOccurence(finger, ',') + 1;
+	char addressArr[occ][DATA_SIZE_KILO];
+	split(finger, ',', addressArr);
+	for (int i = 0; i < occ; i++) {
+		cout << i << " -> " << addressArr[i] << endl;
+	}
+}
+
+void helperQuit() {
+	if (!checkIfPartOfNw(selfNode)) {
+		return;
+	}
+
+	cout
+			<< "Asking all the nodes to shut down, Thanks for using chord_DHT, see you again soon :)"
+			<< endl;
+
+	strcpy(client_send_data, MSG_QUIT);
+	strcat(client_send_data, selfNode->self->ipWithPort);
+
+	nodeHelper* remoteNode = selfNode->successor;
+	while (strcmp(remoteNode->ipWithPort, selfNode->self->ipWithPort) != 0) {
+		connectToRemoteNode(remoteNode->ip, remoteNode->port);
+		remoteNode = convertToNodeHelper(client_recv_data);
+	}
+
+	cout << "Got ack from all the nodes" << endl;
+	shutMe();
 }
 
 void helperSuccessor() {
@@ -466,14 +479,12 @@ void helperDump() {
 }
 
 void getAndPrintDump(char *addr, unsigned int port) {
-	strcpy(ip2Join, addr);
-	remote_port = port;
-	char tmp[3] = MSG_DUMP;
-	strcpy(client_send_data, tmp);
-	int clientThreadID = create(client);
+	strcpy(client_send_data, MSG_DUMP);
+
 	retry_count = 5; //Modifying the retry count assuming server IP may be incorrect
-	runClientAndWaitForResult(clientThreadID);
+	connectToRemoteNode(addr, port);
 	retry_count = 9999; //Modifying the retry count for all the future connections
+
 	if (client_recv_data[0] == SERVER_BUSY) { //Server busy or does not exist
 		//return;
 	}
@@ -506,8 +517,7 @@ void helperDumpAll() {
 		return;
 	}
 
-	char tmp[3] = MSG_DUMP_ALL;
-	strcpy(client_send_data, tmp);
+	strcpy(client_send_data, MSG_DUMP_ALL);
 
 	//getAndPrintDump();
 }
@@ -557,26 +567,18 @@ void fillNodeEntries(struct sockaddr_in server_addr) {
 	populateFingerTableSelf();
 }
 
-void askSuccForFinger() {
-	strcpy(ip2Join, selfNode->successor->ip);
-	remote_port = selfNode->successor->port;
+void connectToRemoteNode(char* ip, unsigned int port) {
+	strcpy(ip2Join, ip);
+	remote_port = port;
 
+	//Appending my information in the request
+	strcat(client_send_data, "?");
 	strcat(client_send_data, selfNode->self->ipWithPort);
-	strcat(client_send_data, ",");
-	cout << "Inside askSuccForFinger: clientsendData - " << client_send_data
+
+	cout << "Inside connectToRemoteNode: clientsendData - " << client_send_data
 			<< endl;
 	int clientThreadID = create(client);
 	runClientAndWaitForResult(clientThreadID);
-}
-
-void askSuccToQuit() {
-	strcpy(ip2Join, selfNode->successor->ip);
-	remote_port = selfNode->successor->port;
-
-	cout << "Inside askSuccToQuit: clientsendData - " << client_send_data
-			<< endl;
-	int clientThreadID = create(client);
-	run(clientThreadID);
 }
 
 
@@ -587,8 +589,8 @@ void processJoin() {
 		int fixFingersID = create(fixFingers);
 		run(fixFingersID);
 	}
-	server_send_data[0] = 'q';
-	server_send_data[1] = '\0';
+
+	strcpy(server_send_data, MSG_ACK);
 }
 
 void processSucc() {
@@ -602,48 +604,13 @@ void processPred() {
 }
 
 void processFinger(char *data) {
-	char *startAddr = substring(data, 0, indexOf(data, ','));
 	cout << "client wants to find the fingers" << endl;
-
-	if (strcmp(startAddr, selfNode->self->ipWithPort) == 0) { // checking if I am the starting node
-		cout << "Got all the fingers, printing now: " << endl;
-		int occ = countOccurence(data, ',') + 1;
-		char addressArr[occ][KILO];
-		split(data, ',', addressArr);
-		for (int i = 0; i < occ - 1; i++) {
-			cout << i << " -> " << addressArr[i] << endl;
-		}
-	}
-
-	else {
-		strcpy(client_send_data, server_recv_data);
-		askSuccForFinger();
-	}
-	server_send_data[0] = 'q';
-	server_send_data[1] = '\0';
-}
-
-void shutMe() {
-	cout << "Shutting myself after 5 sec" << endl;
-	sleep(5);
-	close(serverSock);
-	clean();
+	strcpy(server_send_data, selfNode->successor->ipWithPort);
 }
 
 void processQuit(char *data) {
 	cout << "ChordRing shutting down, I need to shut as well" << endl;
-
-	strcat(data, ",");
-	char *startAddr = substring(data, 0, indexOf(data, ','));
-
-	if (strcmp(startAddr, selfNode->self->ipWithPort) == 0) { // checking if I am the starting node
-		cout << "Quit Request Sent to all the nodes" << endl;
-		shutMe();
-	} else {
-		strcpy(client_send_data, server_recv_data);
-		askSuccToQuit();
-	}
-	shutMe();
+	strcpy(server_send_data, selfNode->successor->ipWithPort);
 }
 
 void processChangeSucc(char *addr) {
@@ -651,8 +618,7 @@ void processChangeSucc(char *addr) {
 
 	changeSuccAndFixFirstFinger(convertToNodeHelper(addr));
 
-	server_send_data[0] = 'q';
-	server_send_data[1] = '\0';
+	strcpy(server_send_data, MSG_ACK);
 }
 
 void processChangePred(char *addr) {
@@ -664,16 +630,14 @@ void processChangePred(char *addr) {
 	//since last statement in join
 	distributeKeys();//ab:
 
-	server_send_data[0] = 'q';
-	server_send_data[1] = '\0';
+	strcpy(server_send_data, MSG_ACK);
 }
 
 void processPut(char *dataVal) {
 	cout << "client wants to put: " << dataVal << endl;
 	putInMyMap(dataVal);
 
-	server_send_data[0] = 'q';
-	server_send_data[1] = '\0';
+	strcpy(server_send_data, MSG_ACK);
 }
 
 void processGet(char *data) {
@@ -681,7 +645,7 @@ void processGet(char *data) {
 
 	char hexHashKey[HASH_HEX_BITS];
 	data2hexHash(data, hexHashKey);
-	char dataVal[KILO];
+	char dataVal[DATA_SIZE_KILO];
 
 	strcpy(dataVal, getFromMyMap(data));
 	strcpy(server_send_data, dataVal);
@@ -726,6 +690,13 @@ void processDumpAll() {
 void changeSuccAndFixFirstFinger(nodeHelper* succ) {
 	selfNode->successor = succ;
 	selfNode->fingerNode[0] = succ;
+}
+
+void shutMe() {
+	cout << "Shutting myself after 5 sec" << endl;
+	sleep(5);
+	close(serverSock);
+	clean();
 }
 
 //-----TCP Functions-------
@@ -849,19 +820,22 @@ void server() {
 		connected
 				= accept(sock, (struct sockaddr*) ((&client_addr)), &sin_size);
 
-		printf("\n I got a connection from (%s , %d)",
-				inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
+		/*cout << "I got a connection from" << inet_ntoa(client_addr.sin_addr)
+		 << ntohs(client_addr.sin_port) << endl;*/
 
-		cout << "closing the connection after communicating" << endl;
-		bytes_received = recv(connected, server_recv_data, DATA_SIZE, 0);
-		cout << "Data received from client" << endl;
+		bytes_received = recv(connected, server_recv_data, DATA_SIZE_LARGE, 0);
 		server_recv_data[bytes_received] = '\0';
 
 		char* type = substring(server_recv_data, 0, 2);
 		char* data = substring(server_recv_data, 3, strlen(server_recv_data));
 
+		char dataValArr[2][DATA_SIZE_KILO];
+		split(data, '?', dataValArr);
+		cout << "Got request from: " << dataValArr[1] << endl;
+
+		char* reqData = dataValArr[0];
 		if (strcmp(type, MSG_QUIT) == 0) {
-			processQuit(data);
+			processQuit(reqData);
 		}
 
 		else if (strcmp(type, MSG_JOIN) == 0) {
@@ -877,11 +851,11 @@ void server() {
 		}
 
 		else if (strcmp(type, MSG_FINGER) == 0) {
-			processFinger(data);
+			processFinger(reqData);
 		}
 
 		else if (strcmp(type, MSG_KEY_SUCC) == 0) {
-			processKeySucc(data);
+			processKeySucc(reqData);
 		}
 
 		else if (strcmp(type, MSG_DUMP) == 0) {
@@ -893,24 +867,29 @@ void server() {
 		}
 
 		else if (strcmp(type, MSG_CHNG_SUCC) == 0) {
-			processChangeSucc(data);
+			processChangeSucc(reqData);
 		}
 
 		else if (strcmp(type, MSG_CHNG_PRED) == 0) {
-			processChangePred(data);
+			processChangePred(reqData);
 		}
 
 		else if (strcmp(type, MSG_PUT) == 0) {
-			processPut(data);
+			processPut(reqData);
 		}
 
 		else if (strcmp(type, MSG_GET) == 0) {
-			processGet(data);
+			processGet(reqData);
 		}
 
 		send(connected, server_send_data, strlen(server_send_data), 0);
-		cout << "Done the required task, closing the connection" << endl;
+		cout << "Done the required task, closing the connection" << endl
+				<< endl;
 		close(connected);
+
+		if (strcmp(type, MSG_QUIT) == 0) {
+			shutMe();
+		}
 	}
 	//right now, doesn't reach here
 	close(sock);
@@ -921,7 +900,7 @@ bool connectToServer(int & sock) {
 	struct sockaddr_in server_addr;
 	cout << "Inside connect to server: " << ip2Join << endl;
 	host = gethostbyname(ip2Join);
-	cout << "creating client socket" << endl;
+
 	if ((sock = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
 		perror("Socket");
 		exit(1);
@@ -931,7 +910,7 @@ bool connectToServer(int & sock) {
 	server_addr.sin_port = htons(remote_port);
 	server_addr.sin_addr = *((struct in_addr *) host->h_addr);
 	bzero(&(server_addr.sin_zero), 8);
-	cout << "client will try and connect to server" << endl;
+
 	int retriedCount = 0;
 	while (connect(sock, (struct sockaddr *) &server_addr,
 			sizeof(struct sockaddr)) == -1) {
@@ -949,7 +928,7 @@ bool connectToServer(int & sock) {
 			return false;
 		}
 	}
-	cout << "client connected to server\n" << endl;
+	cout << "client connected to server\n" << endl << endl;
 	return true;
 }
 
@@ -967,7 +946,7 @@ void client() {
 
 	send(sock, client_send_data, strlen(client_send_data), 0);
 
-	bytes_recieved = recv(sock, client_recv_data, DATA_SIZE, 0);
+	bytes_recieved = recv(sock, client_recv_data, DATA_SIZE_LARGE, 0);
 	cout << "Data successfully received" << endl;
 	client_recv_data[bytes_recieved] = '\0';
 	close(sock);
@@ -1029,53 +1008,35 @@ void distributeKeys() {
 }
 
 nodeHelper* get_SuccFromRemoteNode(nodeHelper* remoteNode) {
-	strcpy(ip2Join, remoteNode->ip);
-	remote_port = remoteNode->port;
+	strcpy(client_send_data, MSG_NODE_SUCC);
 
-	char tmp[3] = MSG_NODE_SUCC;
-	strcpy(client_send_data, tmp);
-	int clientThreadID = create(client);
-	runClientAndWaitForResult(clientThreadID);
+	connectToRemoteNode(remoteNode->ip, remoteNode->port);
 	cout << "Got the successor from remote node: " << client_recv_data << endl;
 	return convertToNodeHelper(client_recv_data);
 }
 
 nodeHelper* get_PredFromRemoteNode(nodeHelper* remoteNode) {
-	strcpy(ip2Join, remoteNode->ip);
-	remote_port = remoteNode->port;
+	strcpy(client_send_data, MSG_NODE_PRED);
 
-	char tmp[3] = MSG_NODE_PRED;
-	strcpy(client_send_data, tmp);
-	int clientThreadID = create(client);
-	runClientAndWaitForResult(clientThreadID);
+	connectToRemoteNode(remoteNode->ip, remoteNode->port);
 	cout << "Got the predecessor from remote node: " << client_recv_data
 			<< endl;
 	return convertToNodeHelper(client_recv_data);
 }
 
 void changeSuccOfRemoteNodeToMyself(nodeHelper* remoteNode) {
-	strcpy(ip2Join, remoteNode->ip);
-	remote_port = remoteNode->port;
-
-	char tmp[3] = MSG_CHNG_SUCC;
-	strcpy(client_send_data, tmp);
+	strcpy(client_send_data, MSG_CHNG_SUCC);
 	strcat(client_send_data, selfNode->self->ipWithPort);
 
-	int clientThreadID = create(client);
-	runClientAndWaitForResult(clientThreadID);
+	connectToRemoteNode(remoteNode->ip, remoteNode->port);
 	cout << "Changed the successor of remote node to myself" << endl;
 }
 
 void changePredOfRemoteNodeToMyself(nodeHelper* remoteNode) {
-	strcpy(ip2Join, remoteNode->ip);
-	remote_port = remoteNode->port;
-
-	char tmp[3] = MSG_CHNG_PRED;
-	strcpy(client_send_data, tmp);
+	strcpy(client_send_data, MSG_CHNG_PRED);
 	strcat(client_send_data, selfNode->self->ipWithPort);
 
-	int clientThreadID = create(client);
-	runClientAndWaitForResult(clientThreadID);
+	connectToRemoteNode(remoteNode->ip, remoteNode->port);
 	cout << "Changed the predecessor of remote node to myself" << endl;
 }
 
@@ -1106,39 +1067,13 @@ nodeHelper* closest_preceding_finger(char key[]) {
 }
 
 nodeHelper* getKeySuccFromRemoteNode(nodeHelper* remoteNode, char key[]) {
-
-	strcpy(ip2Join, remoteNode->ip);
-	remote_port = remoteNode->port;
-	char tmp[] = MSG_KEY_SUCC;
-	strcpy(client_send_data, tmp); //we will be acting as client to send data
+	strcpy(client_send_data, MSG_KEY_SUCC); //we will be acting as client to send data
 	strcat(client_send_data, key);
-	cout << "Sending this data to remote node: " << client_send_data << endl;
-	int clientThreadID = create(client);
-	runClientAndWaitForResult(clientThreadID);
+
+	connectToRemoteNode(remoteNode->ip, remoteNode->port);
 
 	cout << "Data received from remote node " << client_recv_data << endl;
-	//now make a nodeHelper and return based on ipWithPort received
 	return convertToNodeHelper(client_recv_data);
-
-}
-
-nodeHelper* convertToNodeHelper(char *ipWithPort) {
-	nodeHelper* toReturn = new nodeHelper;
-
-	strcpy(toReturn->ipWithPort, ipWithPort);
-	char* ipAddr = substring(ipWithPort, 0, indexOf(ipWithPort, ':'));
-	char* portString = substring(ipWithPort, indexOf(ipWithPort, ':') + 2,
-			strlen(ipWithPort));
-	unsigned int portNum = atoi(portString);
-
-	strcpy(toReturn->ip, ipAddr);
-	toReturn->port = portNum;
-
-	char hexHash[HASH_HEX_BITS];
-	data2hexHash(toReturn->ipWithPort, hexHash);
-	strcpy(toReturn->nodeKey, hexHash);
-
-	return toReturn;
 }
 
 //-----------MAIN---------------
@@ -1147,11 +1082,4 @@ int main() {
 	create(userInput);
 	start();
 	return 0;
-
-	/*putInMyMap("123 kapil");
-	 getFromMyMap("123");*/
-
-	/*char ip[IP_SIZE];
-	 getMyIp(ip);
-	 cout << ip;*/
 }
