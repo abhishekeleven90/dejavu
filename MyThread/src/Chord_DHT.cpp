@@ -37,7 +37,7 @@ using namespace std;
 #define MSG_ACK "m:"
 #define SERVER_BUSY 'x'
 
-#define FIX_FINGER_COUNT 2
+#define FIX_FINGER_LIMIT 2
 
 //----------Globals---------
 char ui_data[DATA_SIZE_KILO];
@@ -54,6 +54,8 @@ int serverSock;
 int isCreated = false;
 int isJoined = false;
 int retry_count = 5;
+
+int fixFingerCount = 1;
 
 //****************Function Declarations*******************
 //-------Helper Functions----------
@@ -103,6 +105,7 @@ void server();
 void client();
 
 //-----CHORD Functions-------
+void askSuccToFixFinger(char* ipWithPort);
 void fixFingers();
 nodeHelper* get_SuccFromRemoteNode(nodeHelper* remoteNode);
 nodeHelper* get_PredFromRemoteNode(nodeHelper* remoteNode);
@@ -321,20 +324,7 @@ void helperJoin(char* joinCmd) {
 	changeSuccOfRemoteNodeToMyself(selfNode->predecessor);
 	changePredOfRemoteNodeToMyself(selfNode->successor);
 
-	for (int k = 0; k < FIX_FINGER_COUNT; k++) {
-		fixFingers();
-
-		strcpy(client_send_data, MSG_FIX_FINGER);
-		strcat(client_send_data, selfNode->self->ipWithPort);
-
-		nodeHelper* remoteNode = selfNode->successor;
-		while (strcmp(remoteNode->ipWithPort, selfNode->self->ipWithPort) != 0) {
-			connectToRemoteNode(remoteNode->ip, remoteNode->port);
-			remoteNode = convertToNodeHelper(client_recv_data);
-		}
-	}
-
-	cout << "Done fixing fingers" << endl;
+	askSuccToFixFinger(selfNode->self->ipWithPort);
 }
 
 void putInMyMap(char* dataVal) {
@@ -680,22 +670,30 @@ void processQuit(char *data) {
 }
 
 void processFixFinger(char *data) {
-	//cout << "New node added, fixing my finger table" << endl;
-	fixFingers();
-	strcpy(server_send_data, selfNode->successor->ipWithPort);
+
+	if (strcmp(data, selfNode->self->ipWithPort) == 0) {
+		//Reaches token back to me --- fixed fingers of all the nodes
+		if (fixFingerCount == FIX_FINGER_LIMIT) {
+			//fixed fingers
+			cout << "Done with fixing the fingers" << endl;
+			strcpy(server_send_data, MSG_ACK);
+			return;
+		}
+		fixFingerCount++;
+	}
+
+	askSuccToFixFinger(data);
+	strcpy(server_send_data, MSG_ACK);
 }
 
 void processChangeSucc(char *addr) {
 	//cout << "Client wants to change my succ to: " << addr << endl;
-
 	changeSuccAndFixFirstFinger(convertToNodeHelper(addr));
-
 	strcpy(server_send_data, MSG_ACK);
 }
 
 void processChangePred(char *addr) {
 	//cout << "Client wants to change my pred to: " << addr << endl;
-
 	selfNode->predecessor = convertToNodeHelper(addr);
 	distributeKeys();
 
@@ -1063,7 +1061,21 @@ void client() {
 }
 
 //-----------CHORD FUNCTIONS-------
+void askSuccToFixFinger(char* ipWithPort) {
+	fixFingers(); //fixing my finger table
+
+	strcpy(client_send_data, MSG_FIX_FINGER);
+	strcat(client_send_data, ipWithPort);
+
+	strcpy(ip2Join, selfNode->successor->ip);
+	remote_port = selfNode->successor->port;
+
+	int clientThreadId = create(client);
+	run(clientThreadId); //Non blocking call for remoteSucc fixFnger
+}
+
 void fixFingers() {
+	cout << "Fixing my fingers, please wait--- " << endl;
 	for (int fixFingerIndex = 1; fixFingerIndex < M; fixFingerIndex++) {
 		char* key = selfNode->fingerStart[fixFingerIndex];
 		char* me = selfNode->self->nodeKey;
@@ -1082,6 +1094,7 @@ void fixFingers() {
 			selfNode->fingerNode[fixFingerIndex] = find_successor(key);
 		}
 	}
+	cout << "Done with fixing my fingers, tell me how can I help you" << endl;
 }
 
 //I am going to distributeKeys to my pred
@@ -1171,6 +1184,9 @@ nodeHelper* getKeySuccFromRemoteNode(nodeHelper* remoteNode, char key[]) {
 	strcpy(client_send_data, MSG_KEY_SUCC); //we will be acting as client to send data
 	strcat(client_send_data, key);
 
+	if (strcmp(remoteNode->ipWithPort, selfNode->self->ipWithPort) == 0) { //no need to connect to remote node, if it is me
+		return selfNode->self;
+	}
 	connectToRemoteNode(remoteNode->ip, remoteNode->port);
 
 	//cout << "Data received from remote node " << client_recv_data << endl;
