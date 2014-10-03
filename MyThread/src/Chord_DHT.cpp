@@ -512,7 +512,7 @@ void getAndPrintDump(char *addr, unsigned int port, int isUnique) {
 	retry_count = 9999; //Modifying the retry count for all the future connections
 
 	if (client_recv_data[0] == SERVER_BUSY) { //Server busy or does not exist
-		//return;
+		return;
 	}
 	cout << "Dump Received" << endl;
 

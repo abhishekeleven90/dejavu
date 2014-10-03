@@ -163,6 +163,16 @@ void printNodeDetails(Node* node, int isUnique) {
 }
 
 void printDump(char* dumpData, int isUnique) {
+	for (int i = 0; i < M; i++) {
+		memset(GLOBAL_ARR[i], 0, sizeof GLOBAL_ARR[i]);
+	}
+	for (int i = 0; i < M; i++) {
+		memset(FINGER_ARR[i], 0, sizeof FINGER_ARR[i]);
+	}
+	for (int i = 0; i < M; i++) {
+		memset(KEY_VALUES[i], 0, sizeof KEY_VALUES[i]);
+	}
+
 	split(dumpData, '|', GLOBAL_ARR);
 
 	split(GLOBAL_ARR[1], ',', FINGER_ARR);
