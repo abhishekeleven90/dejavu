@@ -35,7 +35,9 @@ using namespace std;
 #define MSG_PUT "i:"
 #define MSG_GET "g:"
 #define MSG_ACK "m:"
+
 #define SERVER_BUSY 'x'
+#define SERVER_DIFF_RING "c:"
 
 //----------Globals---------
 char ui_data[DATA_SIZE_KILO];
@@ -55,6 +57,8 @@ int retry_count = 5;
 
 int isNodeJoined = false;
 int isMeCreator = false;
+
+char creatorIP[IP_SIZE];
 
 //****************Function Declarations*******************
 //-------Helper Functions----------
@@ -292,7 +296,8 @@ void helperJoin(char* joinCmd) {
 		close(serverSock);
 		return;
 	}
-	cout << "Node joined to server" << endl;
+	strcpy(creatorIP, client_recv_data);
+	cout << "Joined chord network with creatorIp: " << creatorIP << endl;
 	retry_count = 9999; //Modifying the retry count for all the future connections
 
 	cout << "Asking the known remote node for my actual successor" << endl;
@@ -493,7 +498,11 @@ void getAndPrintDump(char *addr, unsigned int port) {
 
 	if (client_recv_data[0] == SERVER_BUSY) { //Server busy or does not exist
 		return;
+	} else if (strcmp(client_recv_data, SERVER_DIFF_RING) == 0) { //Server not in the same chord network
+		cout << "Sorry, server unreachable, may belong to diff network" << endl;
+		return;
 	}
+
 	cout << "Dump Received" << endl;
 
 	printDump(client_recv_data);
@@ -597,6 +606,10 @@ void fillNodeEntries(struct sockaddr_in server_addr) {
 		strcpy(selfNode->fingerStart[i], hexVal);
 	}
 	populateFingerTableSelf();
+
+	if (isMeCreator) {
+		strcpy(creatorIP, selfNode->self->ipWithPort);
+	}
 }
 
 void connectToRemoteNode(char* ip, unsigned int port) {
@@ -604,9 +617,9 @@ void connectToRemoteNode(char* ip, unsigned int port) {
 	strcpy(ip2Join, ip);
 	remote_port = port;
 
-	//Appending my information in the request
+	//Appending creatorIp in the request in the request
 	strcat(client_send_data, "?");
-	strcat(client_send_data, selfNode->self->ipWithPort);
+	strcat(client_send_data, creatorIP);
 
 	//cout << "Inside connectToRemoteNode: clientsendData - " << client_send_data
 	//<< endl;
@@ -620,7 +633,7 @@ void processJoin() {
 		isNodeJoined = true;
 		askSuccToFixFinger();
 	}
-	strcpy(server_send_data, MSG_ACK);
+	strcpy(server_send_data, creatorIP);
 }
 
 void processSucc() {
@@ -920,7 +933,11 @@ void server() {
 		}
 
 		else if (strcmp(type, MSG_DUMP) == 0) {
-			processDump();
+			if (strcmp(creatorIP, dataValArr[1]) == 0) { //checking if belonging to same chord network
+				processDump();
+			} else {
+				strcpy(server_send_data, SERVER_DIFF_RING);
+			}
 		}
 
 		else if (strcmp(type, MSG_DUMP_ALL) == 0) {
