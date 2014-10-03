@@ -632,6 +632,7 @@ void fillNodeEntries(struct sockaddr_in server_addr) {
 }
 
 void connectToRemoteNode(char* ip, unsigned int port) {
+	memset(client_recv_data, 0, size);
 	strcpy(ip2Join, ip);
 	remote_port = port;
 
@@ -1119,7 +1120,9 @@ void distributeKeys(nodeHelper* myPred) {
 
 			connectToRemoteNode(myPred->ip, myPred->port);
 
-			cout<<"Data value pair "<<dataVal<<" transferred to my predecessor, erasing now locally"<<endl;
+			cout << "Data value pair " << dataVal
+					<< " transferred to my predecessor, erasing now locally"
+					<< endl;
 			selfNode->dataValMap.erase(it->first);//last line
 		}
 	}
