@@ -1158,6 +1158,7 @@ void distributeKeys(nodeHelper* myPred) {
 			cout << "key-val pair " << dataVal << " transferring to pred"
 					<< endl;
 			selfNode->dataValMap.erase(it->first);//last line
+			sleep(5);
 		}
 	}
 }
