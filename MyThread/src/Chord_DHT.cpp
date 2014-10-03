@@ -43,9 +43,9 @@ using namespace std;
 //----------Globals---------
 char ui_data[DATA_SIZE_KILO];
 char server_send_data[DATA_SIZE_KILO], server_recv_data[DATA_SIZE_KILO];
-char client_send_data[DATA_SIZE_KILO], client_recv_data[DATA_SIZE_KILO],
-		t_client_recv_data[DATA_SIZE_KILO];
+char client_send_data[DATA_SIZE_KILO], client_recv_data[DATA_SIZE_KILO];
 char ff_client_send_data[DATA_SIZE_KILO], ff_client_recv_data[DATA_SIZE_KILO];
+char dd_client_send_data[DATA_SIZE_KILO], dd_client_recv_data[DATA_SIZE_KILO];
 
 unsigned int server_port = 0;
 unsigned int remote_port = 0; // port with which to connect to server
@@ -1072,9 +1072,24 @@ void fingersClient() {
 	close(sock);
 }
 
+void distributeClient() {
+	int sock, bytes_recieved;
+
+	if (!connectToServer(sock)) {
+		dd_client_recv_data[0] = SERVER_BUSY; //Inserting this --- to be used in helperJoin
+		return;
+	}
+
+	send(sock, dd_client_send_data, strlen(dd_client_send_data), 0);
+
+	bytes_recieved = recv(sock, dd_client_recv_data, DATA_SIZE_KILO, 0);
+	dd_client_recv_data[bytes_recieved] = '\0';
+	close(sock);
+}
+
 //-----------CHORD FUNCTIONS-------
 void askSuccToFixFinger() {
-	sleep(5);
+	sleep(2);
 	fixFingers(); //fixing my finger table
 
 	strcpy(ff_client_send_data, MSG_FIX_FINGER);
@@ -1126,17 +1141,19 @@ void distributeKeys(nodeHelper* myPred) {
 				selfNode->self->nodeKey) == 0) {
 
 		} else {
-			cout << "TRANSFERING a data value pair to my predecessor" << endl;
 			char *dataVal = (char *) malloc(sizeof(char) * 1024);
 			strcpy(dataVal, it->second);
 
-			strcpy(client_send_data, MSG_PUT);
-			strcat(client_send_data, dataVal);
+			strcpy(dd_client_send_data, MSG_PUT);
+			strcat(dd_client_send_data, dataVal);
 
-			connectToRemoteNode(myPred->ip, myPred->port);
+			strcpy(ip2Join, myPred->ip);
+			remote_port = myPred->port;
 
-			cout << "Data value pair " << dataVal
-					<< " transferred to my predecessor, erasing now locally"
+			int clientThreadId = create(distributeClient);
+			run(clientThreadId); //Non blocking call for distributekeys
+
+			cout << "key-val pair " << dataVal << " transferring to pred"
 					<< endl;
 			selfNode->dataValMap.erase(it->first);//last line
 		}
