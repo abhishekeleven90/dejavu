@@ -37,8 +37,6 @@ using namespace std;
 #define MSG_ACK "m:"
 #define SERVER_BUSY 'x'
 
-#define FIX_FINGER_LIMIT 2
-
 //----------Globals---------
 char ui_data[DATA_SIZE_KILO];
 char server_send_data[DATA_SIZE_KILO], server_recv_data[DATA_SIZE_KILO];
@@ -55,7 +53,8 @@ int isCreated = false;
 int isJoined = false;
 int retry_count = 5;
 
-int fixFingerCount = 1;
+int isNodeJoined = false;
+int isMeCreator = false;
 
 //****************Function Declarations*******************
 //-------Helper Functions----------
@@ -102,7 +101,7 @@ void server();
 void client();
 
 //-----CHORD Functions-------
-void askSuccToFixFinger(char* ipWithPort);
+void askSuccToFixFinger();
 void fixFingers();
 nodeHelper* get_SuccFromRemoteNode(nodeHelper* remoteNode);
 nodeHelper* get_PredFromRemoteNode(nodeHelper* remoteNode);
@@ -123,7 +122,6 @@ void runClientAndWaitForResult(int clientThreadID) {
 	run(clientThreadID);
 	while (client_recv_data[0] == '\0')
 		; //wait until data is received
-
 }
 
 void helperHelp() {
@@ -302,8 +300,6 @@ void helperJoin(char* joinCmd) {
 
 	changeSuccOfRemoteNodeToMyself(selfNode->predecessor);
 	changePredOfRemoteNodeToMyself(selfNode->successor);
-
-	askSuccToFixFinger(selfNode->self->ipWithPort);
 }
 
 void putInMyMap(char* dataVal) {
@@ -610,6 +606,10 @@ void connectToRemoteNode(char* ip, unsigned int port) {
 
 void processJoin() {
 	//cout << "Client wants to join" << endl;
+	if (isMeCreator && !isNodeJoined) {
+		isNodeJoined = true;
+		askSuccToFixFinger();
+	}
 	strcpy(server_send_data, MSG_ACK);
 }
 
@@ -633,20 +633,8 @@ void processQuit(char *data) {
 	strcpy(server_send_data, selfNode->successor->ipWithPort);
 }
 
-void processFixFinger(char *data) {
-
-	if (strcmp(data, selfNode->self->ipWithPort) == 0) {
-		//Reaches token back to me --- fixed fingers of all the nodes
-		if (fixFingerCount == FIX_FINGER_LIMIT) {
-			//fixed fingers
-			cout << "Done with fixing the fingers" << endl;
-			strcpy(server_send_data, MSG_ACK);
-			return;
-		}
-		fixFingerCount++;
-	}
-
-	askSuccToFixFinger(data);
+void processFixFinger() {
+	askSuccToFixFinger();
 	strcpy(server_send_data, MSG_ACK);
 }
 
@@ -773,6 +761,7 @@ void userInput() {
 		}
 
 		else if (strcmp(cmdType, "create") == 0) {
+			isMeCreator = true;
 			helperCreate();
 		}
 
@@ -893,7 +882,7 @@ void server() {
 		}
 
 		else if (strcmp(type, MSG_FIX_FINGER) == 0) {
-			processFixFinger(reqData);
+			processFixFinger();
 		}
 
 		else if (strcmp(type, MSG_JOIN) == 0) {
@@ -1015,11 +1004,11 @@ void client() {
 }
 
 //-----------CHORD FUNCTIONS-------
-void askSuccToFixFinger(char* ipWithPort) {
+void askSuccToFixFinger() {
+	sleep(1);
 	fixFingers(); //fixing my finger table
 
 	strcpy(client_send_data, MSG_FIX_FINGER);
-	strcat(client_send_data, ipWithPort);
 
 	strcpy(ip2Join, selfNode->successor->ip);
 	remote_port = selfNode->successor->port;
