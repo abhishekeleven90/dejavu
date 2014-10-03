@@ -1044,7 +1044,7 @@ void client() {
 
 //-----------CHORD FUNCTIONS-------
 void askSuccToFixFinger() {
-	sleep(5);
+	sleep(2);
 	fixFingers(); //fixing my finger table
 
 	strcpy(client_send_data, MSG_FIX_FINGER);
