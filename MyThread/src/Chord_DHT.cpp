@@ -45,6 +45,7 @@ char ui_data[DATA_SIZE_KILO];
 char server_send_data[DATA_SIZE_KILO], server_recv_data[DATA_SIZE_KILO];
 char client_send_data[DATA_SIZE_KILO], client_recv_data[DATA_SIZE_KILO],
 		t_client_recv_data[DATA_SIZE_KILO];
+char ff_client_send_data[DATA_SIZE_KILO], ff_client_recv_data[DATA_SIZE_KILO];
 
 unsigned int server_port = 0;
 unsigned int remote_port = 0; // port with which to connect to server
@@ -1031,15 +1032,26 @@ void client() {
 
 	send(sock, client_send_data, strlen(client_send_data), 0);
 
-	bytes_recieved = recv(sock, t_client_recv_data, DATA_SIZE_KILO, 0);
+	bytes_recieved = recv(sock, client_recv_data, DATA_SIZE_KILO, 0);
 	//cout << "Data successfully received" << endl;
-	t_client_recv_data[bytes_recieved] = '\0';
-	//client_recv_data[bytes_recieved] = '\0';
-	if (strcmp(t_client_recv_data, MSG_FINGER_ACK) != 0) {
-		strcpy(client_recv_data, t_client_recv_data);
-	}
+	client_recv_data[bytes_recieved] = '\0';
+
 	close(sock);
-	//cout << "------------------------------" << endl;
+}
+
+void fingersClient() {
+	int sock, bytes_recieved;
+
+	if (!connectToServer(sock)) {
+		ff_client_recv_data[0] = SERVER_BUSY; //Inserting this --- to be used in helperJoin
+		return;
+	}
+
+	send(sock, ff_client_send_data, strlen(ff_client_send_data), 0);
+
+	bytes_recieved = recv(sock, ff_client_recv_data, DATA_SIZE_KILO, 0);
+	ff_client_recv_data[bytes_recieved] = '\0';
+	close(sock);
 }
 
 //-----------CHORD FUNCTIONS-------
@@ -1047,12 +1059,13 @@ void askSuccToFixFinger() {
 	sleep(2);
 	fixFingers(); //fixing my finger table
 
-	strcpy(client_send_data, MSG_FIX_FINGER);
+	strcpy(ff_client_send_data, MSG_FIX_FINGER);
 
 	strcpy(ip2Join, selfNode->successor->ip);
 	remote_port = selfNode->successor->port;
 
-	int clientThreadId = create(client);
+	cout << "asking succ to fix finger: " << selfNode->successor->ipWithPort;
+	int clientThreadId = create(fingersClient);
 	run(clientThreadId); //Non blocking call for remoteSucc fixFnger
 }
 
