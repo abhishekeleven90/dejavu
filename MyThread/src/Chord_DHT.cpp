@@ -1074,6 +1074,7 @@ void fingersClient() {
 }
 
 void distributeClient() {
+	sleep(5);
 	int sock, bytes_recieved;
 
 	if (!connectToServer(sock)) {
@@ -1090,7 +1091,7 @@ void distributeClient() {
 
 //-----------CHORD FUNCTIONS-------
 void askSuccToFixFinger() {
-	sleep(2);
+	//sleep(2);
 	fixFingers(); //fixing my finger table
 
 	strcpy(ff_client_send_data, MSG_FIX_FINGER);
