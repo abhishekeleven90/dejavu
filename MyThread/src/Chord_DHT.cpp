@@ -111,7 +111,7 @@ void changeSuccOfRemoteNodeToMyself(nodeHelper* remoteNode);
 void changePredOfRemoteNodeToMyself(nodeHelper* remoteNode);
 nodeHelper* find_successor(char key[]);
 nodeHelper* closest_preceding_finger(char key[]);
-void distributeKeys();//ab:
+void distributeKeys(nodeHelper *myPred);
 
 nodeHelper* getKeySuccFromRemoteNode(nodeHelper* remoteNode, char key[]);
 
@@ -695,10 +695,7 @@ void processChangePred(char *addr) {
 	cout << "Client wants to change my pred to: " << addr << endl;
 
 	selfNode->predecessor = convertToNodeHelper(addr);
-	//THE TURNING POINT
-	//here is where we should actually call distributeKeys
-	//since last statement in join
-	distributeKeys();//ab:
+	distributeKeys(selfNode->predecessor);
 
 	strcpy(server_send_data, MSG_ACK);
 }
@@ -1068,6 +1065,7 @@ void fixFingers() {
 
 		else {
 			//cout<<"inside fixFingers: Entered here"<<endl;
+			sleep(1);
 			selfNode->fingerNode[fixFingerIndex] = find_successor(key);
 		}
 
@@ -1075,8 +1073,8 @@ void fixFingers() {
 	}
 }
 
-//I am going to distributeKeys to my pred
-void distributeKeys() {
+//I am going to distributeKeys to my predecessor
+void distributeKeys(nodeHelper* myPred) {
 	cout << "Will try and distribute keys since my pred changed" << endl;
 	map<char*, char*>::iterator it;
 	for (map<char*, char*>::iterator it = (selfNode->dataValMap).begin(); it
@@ -1087,13 +1085,16 @@ void distributeKeys() {
 				selfNode->self->nodeKey) == 0) {
 
 		} else {
-			cout << "TRANSFERING a data val pair to my pred" << endl;
-			char *cmd = (char *) malloc(sizeof(char) * 1024);
-			strcpy(cmd, "put ");
-			strcat(cmd, it->second);
-			strcat(cmd, "#");//shouldn't get printed on server insert should be fine
-			cout << "Command USED: " << cmd << endl;
-			helperPut(cmd);//can change
+			cout << "TRANSFERING a data value pair to my predecessor" << endl;
+			char *dataVal = (char *) malloc(sizeof(char) * 1024);
+			strcpy(dataVal, it->second);
+
+			strcpy(client_send_data, MSG_PUT);
+			strcat(client_send_data, dataVal);
+
+			connectToRemoteNode(myPred->ip, myPred->port);
+
+			cout<<"Data value pair "<<dataVal<<" transferred to my predecessor, erasing now locally"<<endl;
 			selfNode->dataValMap.erase(it->first);//last line
 		}
 	}
