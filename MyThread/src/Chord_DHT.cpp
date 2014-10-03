@@ -63,6 +63,8 @@ int isMeCreator = false;
 
 char creatorIP[IP_SIZE];
 
+int fixFingerCount = 0;
+
 //****************Function Declarations*******************
 //-------Helper Functions----------
 void runClientAndWaitForResult(int clientThreadID);
@@ -1069,6 +1071,12 @@ void askSuccToFixFinger() {
 }
 
 void fixFingers() {
+	if (fixFingerCount%3 != 0) {
+		fixFingerCount++;
+		return;
+	}
+
+	fixFingerCount++;
 	//cout << "stabilizing--- ";
 	for (int fixFingerIndex = 1; fixFingerIndex < M; fixFingerIndex++) {
 		char* key = selfNode->fingerStart[fixFingerIndex];
