@@ -41,8 +41,8 @@ using namespace std;
 
 //----------Globals---------
 char ui_data[DATA_SIZE_KILO];
-char server_send_data[DATA_SIZE_LARGE], server_recv_data[DATA_SIZE_LARGE];
-char client_send_data[DATA_SIZE_LARGE], client_recv_data[DATA_SIZE_LARGE];
+char server_send_data[DATA_SIZE_KILO], server_recv_data[DATA_SIZE_KILO];
+char client_send_data[DATA_SIZE_KILO], client_recv_data[DATA_SIZE_KILO];
 
 unsigned int server_port = 0;
 unsigned int remote_port = 0; // port with which to connect to server
@@ -73,12 +73,9 @@ void helperGet(char* getCmd);
 void helperFinger();
 void helperSuccessor();
 void helperPredecessor();
-void helperDump(int isUnique);
-void helperUDump();
-void helperDumpAddr(char* dumpAddrCmd, int isUnique);
-void helperUDumpAddr(char* dumpAddrCmd);
-void helperDumpAll(int isUnique);
-void helperUDumpAll();
+void helperDump();
+void helperDumpAddr(char* dumpAddrCmd);
+void helperDumpAll();
 
 void populateFingerTableSelf();
 void fillNodeEntries(struct sockaddr_in server_addr);
@@ -212,25 +209,6 @@ void helperHelp() {
 	cout << "dumpall";
 	tab(4);
 	cout << "==> displays all information of all the nodes";
-
-	helperHelpNewCmd();
-	cout << "udump";
-	tab(4);
-	cout
-			<< "==> displays all information pertaining to calling node (does not print finger entries with selfIp)";
-
-	helperHelpNewCmd();
-	cout << "udumpaddr <address>";
-	tab(2);
-	cout
-			<< "==> displays all information pertaining to node at address (does not print finger entries with selfIp)";
-	cout << " (eg - udumpaddr 111.111.111.111:1000)";
-
-	helperHelpNewCmd();
-	cout << "udumpall";
-	tab(3);
-	cout
-			<< "==> displays all information of all the nodes (does not print finger entries with selfIp)";
 
 	cout << endl;
 }
@@ -492,19 +470,15 @@ void helperPredecessor() {
 	cout << "Predecessor-> " << selfNode->predecessor->ipWithPort << endl;
 }
 
-void helperDump(int isUnique = false) {
+void helperDump() {
 	if (!checkIfPartOfNw(selfNode)) {
 		return;
 	}
 
-	printNodeDetails(selfNode, isUnique);
+	printNodeDetails(selfNode);
 }
 
-void helperUDump() {
-	helperDump(true);
-}
-
-void getAndPrintDump(char *addr, unsigned int port, int isUnique) {
+void getAndPrintDump(char *addr, unsigned int port) {
 	strcpy(client_send_data, MSG_DUMP);
 
 	retry_count = 5; //Modifying the retry count assuming server IP may be incorrect
@@ -516,20 +490,16 @@ void getAndPrintDump(char *addr, unsigned int port, int isUnique) {
 	}
 	cout << "Dump Received" << endl;
 
-	printDump(client_recv_data, isUnique);
+	printDump(client_recv_data);
 }
 
-void helperDumpAddr(char* dumpAddrCmd, int isUnique = false) {
+void helperDumpAddr(char* dumpAddrCmd) {
 	if (!checkIfPartOfNw(selfNode)) {
 		return;
 	}
 
 	char* addr;
-	if (isUnique) {
-		addr = fetchAddress(dumpAddrCmd, 11);
-	} else {
-		addr = fetchAddress(dumpAddrCmd, 10);
-	}
+	addr = fetchAddress(dumpAddrCmd, 10);
 
 	if (addr == NULL) {
 		return;
@@ -542,14 +512,10 @@ void helperDumpAddr(char* dumpAddrCmd, int isUnique = false) {
 		//Invalid portNumber
 		return;
 	}
-	getAndPrintDump(addr, port, isUnique);
+	getAndPrintDump(addr, port);
 }
 
-void helperUDumpAddr(char* dumpAddrCmd) {
-	helperDumpAddr(dumpAddrCmd, true);
-}
-
-void helperDumpAll(int isUnique = false) {
+void helperDumpAll() {
 	if (!checkIfPartOfNw(selfNode)) {
 		return;
 	}
@@ -558,7 +524,7 @@ void helperDumpAll(int isUnique = false) {
 
 	int i = 0;
 	cout << i++ << " :: " << endl;
-	helperDump(isUnique);
+	printNodeDetails(selfNode, false);
 
 	nodeHelper* remoteNode = selfNode->successor;
 	while (strcmp(remoteNode->ipWithPort, selfNode->self->ipWithPort) != 0) {
@@ -570,15 +536,11 @@ void helperDumpAll(int isUnique = false) {
 		char* succ = substring(client_recv_data, startIndex, lenSucc);
 
 		cout << i++ << " :: " << endl;
-		printDump(substring(client_recv_data, 0, startIndex - 2), isUnique);
+		printDump(substring(client_recv_data, 0, startIndex - 2));
 
 		remoteNode = convertToNodeHelper(succ);
 	}
 	cout << "Done with printing dump of all the nodes" << endl;
-}
-
-void helperUDumpAll() {
-	helperDumpAll(true);
 }
 
 //populates finger table with all the self entries - only node in the network
@@ -736,20 +698,22 @@ void processDump() {
 	strcat(server_send_data, ",");
 	strcat(server_send_data, selfNode->predecessor->ipWithPort);
 
-	strcat(server_send_data, "|");
+	//------Not sending my finger details---
 
-	for (int i = 0; i < M; i++) {
-		strcat(server_send_data, selfNode->fingerStart[i]);
-		strcat(server_send_data, ",");
-	}
+	/*strcat(server_send_data, "|");
 
-	strcat(server_send_data, "|");
+	 for (int i = 0; i < M; i++) {
+	 strcat(server_send_data, selfNode->fingerStart[i]);
+	 strcat(server_send_data, ",");
+	 }
 
-	for (int i = 0; i < M; i++) {
-		char* nodeIpWithPort = selfNode->fingerNode[i]->ipWithPort;
-		strcat(server_send_data, nodeIpWithPort);
-		strcat(server_send_data, ",");
-	}
+	 strcat(server_send_data, "|");
+
+	 for (int i = 0; i < M; i++) {
+	 char* nodeIpWithPort = selfNode->fingerNode[i]->ipWithPort;
+	 strcat(server_send_data, nodeIpWithPort);
+	 strcat(server_send_data, ",");
+	 }*/
 
 	strcat(server_send_data, "|");
 
@@ -853,18 +817,6 @@ void userInput() {
 			helperDumpAll();
 		}
 
-		else if (strcmp(cmdType, "udump") == 0) {
-			helperUDump();
-		}
-
-		else if (strcmp(cmdType, "udumpaddr") == 0) {
-			helperUDumpAddr(ui_data);
-		}
-
-		else if (strcmp(cmdType, "udumpall") == 0) {
-			helperUDumpAll();
-		}
-
 		else {
 			cout
 					<< "Sorry!!! It seems like you are new here, please type 'help' for list of commands"
@@ -924,7 +876,7 @@ void server() {
 		/*cout << "I got a connection from" << inet_ntoa(client_addr.sin_addr)
 		 << ntohs(client_addr.sin_port) << endl;*/
 
-		bytes_received = recv(connected, server_recv_data, DATA_SIZE_LARGE, 0);
+		bytes_received = recv(connected, server_recv_data, DATA_SIZE_KILO, 0);
 		server_recv_data[bytes_received] = '\0';
 
 		char* type = substring(server_recv_data, 0, 2);
@@ -1055,7 +1007,7 @@ void client() {
 
 	send(sock, client_send_data, strlen(client_send_data), 0);
 
-	bytes_recieved = recv(sock, client_recv_data, DATA_SIZE_LARGE, 0);
+	bytes_recieved = recv(sock, client_recv_data, DATA_SIZE_KILO, 0);
 	//cout << "Data successfully received" << endl;
 	client_recv_data[bytes_recieved] = '\0';
 	close(sock);

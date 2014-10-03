@@ -3,15 +3,13 @@
 #define SECOND 1000000
 #define QUEUE_LIMIT 5
 
-#define DATA_SIZE_TOO_LARGE 131072
-#define DATA_SIZE_LARGE 16384
 #define DATA_SIZE_KILO 1024
 
 #define NODE_DELIM_CHAR ';'
 #define NODE_DELIM_STR ";"
 
 //----------Globals---------
-char GLOBAL_ARR[M][DATA_SIZE_LARGE];
+char GLOBAL_ARR[M][DATA_SIZE_KILO];
 char FINGER_ARR[M][DATA_SIZE_KILO];
 char KEY_VALUES[M][DATA_SIZE_KILO];
 
@@ -47,10 +45,10 @@ bool checkIfPartOfNw(Node* node);
 
 void printNotInNetworkErrorMessage();
 void printInNetworkErrorMessage();
-void printAllFingerTable(Node* node, int isUnique);
+void printAllFingerTable(Node* node);
 void printDataValMap(Node* node);
-void printNodeDetails(Node* node);
-void printDump(char* dumpData, int isUnique);
+void printNodeDetails(Node* node, int isPrintFinger);
+void printDump(char* dumpData);
 
 void helperHelpNewCmd();
 
@@ -129,13 +127,9 @@ void printInNetworkErrorMessage() {
 	cout << "Hey!!! I am in the network, try again later" << endl;
 }
 
-void printAllFingerTable(Node* node, int isUnique) {
+void printAllFingerTable(Node* node) {
 	for (int i = 0; i < M; i++) {
 		char* nodeFinger = node-> fingerNode[i]->ipWithPort;
-
-		if (isUnique && strcmp(nodeFinger, node->self->ipWithPort) == 0) {
-			continue; //not printing self finger entries
-		}
 
 		cout << i << ": " << "\t";
 		cout << node-> fingerStart[i] << ", ";
@@ -152,54 +146,57 @@ void printDataValMap(Node* node) {
 	}
 }
 
-void printNodeDetails(Node* node, int isUnique) {
+void printNodeDetails(Node* node, int isPrintFinger = true) {
 	cout << "Node-> " << node->self->ipWithPort << endl;
 	cout << "Node Key-> " << node->self->nodeKey << endl;
 	cout << "Successor-> " << node->successor->ipWithPort << endl;
 	cout << "Predecessor-> " << node->predecessor->ipWithPort << endl;
-	cout << "Finger table: " << endl;
-	printAllFingerTable(node, isUnique);
+
+	if (isPrintFinger) {
+		cout << "Finger table: " << endl;
+		printAllFingerTable(node);
+	}
 	printDataValMap(node);
 }
 
-void printDump(char* dumpData, int isUnique) {
+void printDump(char* dumpData) {
 	for (int i = 0; i < M; i++) {
 		memset(GLOBAL_ARR[i], 0, sizeof GLOBAL_ARR[i]);
 	}
-	for (int i = 0; i < M; i++) {
-		memset(FINGER_ARR[i], 0, sizeof FINGER_ARR[i]);
-	}
+	/*for (int i = 0; i < M; i++) {
+	 memset(FINGER_ARR[i], 0, sizeof FINGER_ARR[i]);
+	 }*/
 	for (int i = 0; i < M; i++) {
 		memset(KEY_VALUES[i], 0, sizeof KEY_VALUES[i]);
 	}
 
 	split(dumpData, '|', GLOBAL_ARR);
 
-	split(GLOBAL_ARR[1], ',', FINGER_ARR);
+	/*	split(GLOBAL_ARR[1], ',', FINGER_ARR);
 
-	for (int i = 0; i < M; i++) {
-		strcpy(helperNode->fingerStart[i], FINGER_ARR[i]);
-	}
+	 for (int i = 0; i < M; i++) {
+	 strcpy(helperNode->fingerStart[i], FINGER_ARR[i]);
+	 }
 
-	split(GLOBAL_ARR[2], ',', FINGER_ARR);
+	 split(GLOBAL_ARR[2], ',', FINGER_ARR);
 
-	for (int i = 0; i < M; i++) {
-		char* tmp = FINGER_ARR[i];
-		helperNode->fingerNode[i] = convertToNodeHelper(tmp);
-	}
+	 for (int i = 0; i < M; i++) {
+	 char* tmp = FINGER_ARR[i];
+	 helperNode->fingerNode[i] = convertToNodeHelper(tmp);
+	 }*/
 
 	char ipWithPort[3][DATA_SIZE_KILO];
 	split(GLOBAL_ARR[0], ',', ipWithPort);
 
-	split(GLOBAL_ARR[3], ',', KEY_VALUES);
+	split(GLOBAL_ARR[1], ',', KEY_VALUES);
 
 	helperNode->self = convertToNodeHelper(ipWithPort[0]);
 	helperNode->successor = convertToNodeHelper(ipWithPort[1]);
 	helperNode->predecessor = convertToNodeHelper(ipWithPort[2]);
 
-	printNodeDetails(helperNode, isUnique);
+	printNodeDetails(helperNode, false);
 
-	int occ = countOccurence(GLOBAL_ARR[3], ',');
+	int occ = countOccurence(GLOBAL_ARR[1], ',');
 	for (int i = 0; i < occ; i++) {
 		cout << KEY_VALUES[i] << endl;
 	}
