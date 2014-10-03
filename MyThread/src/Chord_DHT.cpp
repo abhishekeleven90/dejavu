@@ -212,13 +212,13 @@ void helperHelp() {
 	helperHelpNewCmd();
 	cout << "dumpaddr <address>";
 	tab(2);
-	cout << "==> displays all information pertaining to node at address";
+	cout << "==> displays information pertaining to node at address";
 	cout << " (eg - dumpaddr 111.111.111.111:1000)";
 
 	helperHelpNewCmd();
 	cout << "dumpall";
 	tab(4);
-	cout << "==> displays all information of all the nodes";
+	cout << "==> displays information of all the nodes";
 
 	cout << endl;
 }
@@ -317,8 +317,6 @@ void helperJoin(char* joinCmd) {
 
 	changeSuccOfRemoteNodeToMyself(selfNode->predecessor);
 	changePredOfRemoteNodeToMyself(selfNode->successor);
-
-	cout << "changed" << endl;
 }
 
 void putInMyMap(char* dataVal) {
@@ -765,6 +763,8 @@ void shutMe() {
 
 //-----TCP Functions-------
 void userInput() {
+	helperClear();
+
 	while (1) {
 		cout << "\n------------------------------" << endl;
 
@@ -1130,7 +1130,7 @@ void changeSuccOfRemoteNodeToMyself(nodeHelper* remoteNode) {
 	strcat(client_send_data, selfNode->self->ipWithPort);
 
 	connectToRemoteNode(remoteNode->ip, remoteNode->port);
-	cout << "Changed the successor of remote node to myself" << endl; //TO-DO : comment
+	cout << "Changed the successor of remote node to myself" << endl;
 }
 
 void changePredOfRemoteNodeToMyself(nodeHelper* remoteNode) {
@@ -1138,7 +1138,7 @@ void changePredOfRemoteNodeToMyself(nodeHelper* remoteNode) {
 	strcat(client_send_data, selfNode->self->ipWithPort);
 
 	connectToRemoteNode(remoteNode->ip, remoteNode->port);
-	cout << "Changed the predecessor of remote node to myself" << endl; //TO-DO : comment
+	cout << "Changed the predecessor of remote node to myself" << endl;
 }
 
 nodeHelper* find_successor(char key[]) {
