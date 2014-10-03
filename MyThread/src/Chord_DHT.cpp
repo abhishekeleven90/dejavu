@@ -1058,6 +1058,7 @@ void client() {
 }
 
 void fingersClient() {
+	sleep(5);
 	int sock, bytes_recieved;
 
 	if (!connectToServer(sock)) {
@@ -1102,7 +1103,7 @@ void askSuccToFixFinger() {
 }
 
 void fixFingers() {
-	if (fixFingerCount % 3 != 0) {
+	if (fixFingerCount % 10 != 0) {
 		fixFingerCount++;
 		return;
 	}
