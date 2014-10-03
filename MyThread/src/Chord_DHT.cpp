@@ -72,6 +72,7 @@ void runClientAndWaitForResult(int clientThreadID);
 void helperHelp();
 void helperPort(char* portCmd);
 void helperClear();
+void helperKeys();
 void helperCreate();
 void helperJoin(char* joinCmd);
 void helperQuit();
@@ -151,6 +152,11 @@ void helperHelp() {
 	cout << "clear";
 	tab(4);
 	cout << "==> clears my screen";
+
+	helperHelpNewCmd();
+	cout << "mykeys";
+	tab(4);
+	cout << "==> prints my key values";
 
 	helperHelpNewCmd();
 	cout << "port <x>";
@@ -245,6 +251,13 @@ void helperPort(char* portCmd) {
 
 void helperClear() {
 	system("clear");
+}
+
+void helperMyKeys() {
+	if (!checkIfPartOfNw(selfNode)) {
+		return;
+	}
+	printDataValMap(selfNode);
 }
 
 void helperCreate() {
@@ -790,6 +803,10 @@ void userInput() {
 			helperClear();
 		}
 
+		else if (strcmp(cmdType, "mykeys") == 0) {
+			helperMyKeys();
+		}
+
 		else if (strcmp(cmdType, "port") == 0) {
 			helperPort(ui_data);
 		}
@@ -809,7 +826,6 @@ void userInput() {
 
 		else if (strcmp(cmdType, "put") == 0) {
 			helperPut(ui_data);
-
 		}
 
 		else if (strcmp(cmdType, "get") == 0) {
@@ -1058,7 +1074,7 @@ void fingersClient() {
 
 //-----------CHORD FUNCTIONS-------
 void askSuccToFixFinger() {
-	sleep(2);
+	sleep(5);
 	fixFingers(); //fixing my finger table
 
 	strcpy(ff_client_send_data, MSG_FIX_FINGER);
@@ -1071,7 +1087,7 @@ void askSuccToFixFinger() {
 }
 
 void fixFingers() {
-	if (fixFingerCount%3 != 0) {
+	if (fixFingerCount % 3 != 0) {
 		fixFingerCount++;
 		return;
 	}
@@ -1101,11 +1117,10 @@ void fixFingers() {
 
 //I am going to distributeKeys to my predecessor
 void distributeKeys(nodeHelper* myPred) {
-	cout << "Will try and distribute keys since my pred changed" << endl;
 	map<char*, char*>::iterator it;
 	for (map<char*, char*>::iterator it = (selfNode->dataValMap).begin(); it
 			!= (selfNode->dataValMap).end(); ++it) {
-		cout << it->first << " : " << it->second << '\n';
+		//cout << it->first << " : " << it->second << '\n';
 		if (keyBelongCheck(selfNode->predecessor->nodeKey,
 				selfNode->self->nodeKey, it->first) or strcmp(it->first,
 				selfNode->self->nodeKey) == 0) {
