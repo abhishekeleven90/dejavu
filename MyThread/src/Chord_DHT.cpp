@@ -1064,7 +1064,6 @@ void askSuccToFixFinger() {
 	strcpy(ip2Join, selfNode->successor->ip);
 	remote_port = selfNode->successor->port;
 
-	cout << "asking succ to fix finger: " << selfNode->successor->ipWithPort;
 	int clientThreadId = create(fingersClient);
 	run(clientThreadId); //Non blocking call for remoteSucc fixFnger
 }
