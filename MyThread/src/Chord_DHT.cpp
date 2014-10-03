@@ -632,7 +632,7 @@ void fillNodeEntries(struct sockaddr_in server_addr) {
 }
 
 void connectToRemoteNode(char* ip, unsigned int port) {
-	memset(client_recv_data, 0, size);
+	memset(client_recv_data, 0, sizeof client_recv_data);
 	strcpy(ip2Join, ip);
 	remote_port = port;
 
