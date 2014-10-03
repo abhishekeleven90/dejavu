@@ -13,6 +13,7 @@
 //----------Globals---------
 char GLOBAL_ARR[M][DATA_SIZE_LARGE];
 char FINGER_ARR[M][DATA_SIZE_KILO];
+char KEY_VALUES[M][DATA_SIZE_KILO];
 
 struct nodeHelper {
 	char nodeKey[HASH_HEX_BITS];
@@ -180,11 +181,18 @@ void printDump(char* dumpData, int isUnique) {
 	char ipWithPort[3][DATA_SIZE_KILO];
 	split(GLOBAL_ARR[0], ',', ipWithPort);
 
+	split(GLOBAL_ARR[3], ',', KEY_VALUES);
+
 	helperNode->self = convertToNodeHelper(ipWithPort[0]);
 	helperNode->successor = convertToNodeHelper(ipWithPort[1]);
 	helperNode->predecessor = convertToNodeHelper(ipWithPort[2]);
 
 	printNodeDetails(helperNode, isUnique);
+
+	int occ = countOccurence(GLOBAL_ARR[3], ',');
+	for (int i = 0; i < occ; i++) {
+		cout << KEY_VALUES[i] << endl;
+	}
 }
 
 void helperHelpNewCmd() {
