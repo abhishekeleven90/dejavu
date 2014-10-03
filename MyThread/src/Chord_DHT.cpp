@@ -62,6 +62,7 @@ void runClientAndWaitForResult(int clientThreadID);
 
 void helperHelp();
 void helperPort(char* portCmd);
+void helperClear();
 void helperCreate();
 void helperJoin(char* joinCmd);
 void helperQuit();
@@ -136,6 +137,11 @@ void helperHelp() {
 	cout << "self";
 	tab(4);
 	cout << "==> prints my ip with port";
+
+	helperHelpNewCmd();
+	cout << "clear";
+	tab(4);
+	cout << "==> clears my screen";
 
 	helperHelpNewCmd();
 	cout << "port <x>";
@@ -226,6 +232,10 @@ void helperPort(char* portCmd) {
 	} else {
 		cout << "port Number did not set" << endl;
 	}
+}
+
+void helperClear() {
+	system("clear");
 }
 
 void helperCreate() {
@@ -754,6 +764,10 @@ void userInput() {
 
 		else if (strcmp(cmdType, "self") == 0) {
 			helperSelf();
+		}
+
+		else if (strcmp(cmdType, "clear") == 0) {
+			helperClear();
 		}
 
 		else if (strcmp(cmdType, "port") == 0) {
