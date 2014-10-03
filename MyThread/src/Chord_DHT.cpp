@@ -1005,7 +1005,6 @@ void client() {
 
 //-----------CHORD FUNCTIONS-------
 void askSuccToFixFinger() {
-	sleep(1);
 	fixFingers(); //fixing my finger table
 
 	strcpy(client_send_data, MSG_FIX_FINGER);
@@ -1018,7 +1017,7 @@ void askSuccToFixFinger() {
 }
 
 void fixFingers() {
-	cout << "Fixing my fingers, please wait--- " << endl;
+	cout << "stabilizing--- ";
 	for (int fixFingerIndex = 1; fixFingerIndex < M; fixFingerIndex++) {
 		char* key = selfNode->fingerStart[fixFingerIndex];
 		char* me = selfNode->self->nodeKey;
@@ -1037,7 +1036,7 @@ void fixFingers() {
 			selfNode->fingerNode[fixFingerIndex] = find_successor(key);
 		}
 	}
-	cout << "Done with fixing my fingers, tell me how can I help you" << endl;
+	cout << "stabilized" << endl;
 }
 
 //I am going to distributeKeys to my predecessor
