@@ -35,6 +35,7 @@ using namespace std;
 #define MSG_PUT "i:"
 #define MSG_GET "g:"
 #define MSG_ACK "m:"
+#define MSG_FINGER_ACK "1:"
 
 #define SERVER_BUSY 'x'
 #define SERVER_DIFF_RING "c:"
@@ -42,7 +43,8 @@ using namespace std;
 //----------Globals---------
 char ui_data[DATA_SIZE_KILO];
 char server_send_data[DATA_SIZE_KILO], server_recv_data[DATA_SIZE_KILO];
-char client_send_data[DATA_SIZE_KILO], client_recv_data[DATA_SIZE_KILO];
+char client_send_data[DATA_SIZE_KILO], client_recv_data[DATA_SIZE_KILO],
+		t_client_recv_data[DATA_SIZE_KILO];
 
 unsigned int server_port = 0;
 unsigned int remote_port = 0; // port with which to connect to server
@@ -311,10 +313,12 @@ void helperJoin(char* joinCmd) {
 	cout << "My actual predecessor is now: "
 			<< selfNode->predecessor->ipWithPort << endl;
 
-	cout << "Changing succ.pred & pred.succ to me" << endl;
+	cout << "Changing succ.pred & pred.succ to me, please wait---" << endl;
 
 	changeSuccOfRemoteNodeToMyself(selfNode->predecessor);
 	changePredOfRemoteNodeToMyself(selfNode->successor);
+
+	cout << "changed" << endl;
 }
 
 void putInMyMap(char* dataVal) {
@@ -658,7 +662,7 @@ void processQuit(char *data) {
 
 void processFixFinger() {
 	askSuccToFixFinger();
-	strcpy(server_send_data, MSG_ACK);
+	strcpy(server_send_data, MSG_FINGER_ACK);
 }
 
 void processChangeSucc(char *addr) {
@@ -1027,15 +1031,20 @@ void client() {
 
 	send(sock, client_send_data, strlen(client_send_data), 0);
 
-	bytes_recieved = recv(sock, client_recv_data, DATA_SIZE_KILO, 0);
+	bytes_recieved = recv(sock, t_client_recv_data, DATA_SIZE_KILO, 0);
 	//cout << "Data successfully received" << endl;
-	client_recv_data[bytes_recieved] = '\0';
+	t_client_recv_data[bytes_recieved] = '\0';
+	//client_recv_data[bytes_recieved] = '\0';
+	if (strcmp(t_client_recv_data, MSG_FINGER_ACK) != 0) {
+		strcpy(client_recv_data, t_client_recv_data);
+	}
 	close(sock);
 	//cout << "------------------------------" << endl;
 }
 
 //-----------CHORD FUNCTIONS-------
 void askSuccToFixFinger() {
+	sleep(5);
 	fixFingers(); //fixing my finger table
 
 	strcpy(client_send_data, MSG_FIX_FINGER);
@@ -1048,7 +1057,7 @@ void askSuccToFixFinger() {
 }
 
 void fixFingers() {
-	cout << "stabilizing--- ";
+	//cout << "stabilizing--- ";
 	for (int fixFingerIndex = 1; fixFingerIndex < M; fixFingerIndex++) {
 		char* key = selfNode->fingerStart[fixFingerIndex];
 		char* me = selfNode->self->nodeKey;
@@ -1067,7 +1076,7 @@ void fixFingers() {
 			selfNode->fingerNode[fixFingerIndex] = find_successor(key);
 		}
 	}
-	cout << "stabilized" << endl;
+	//cout << "stabilized" << endl;
 }
 
 //I am going to distributeKeys to my predecessor
@@ -1121,7 +1130,7 @@ void changeSuccOfRemoteNodeToMyself(nodeHelper* remoteNode) {
 	strcat(client_send_data, selfNode->self->ipWithPort);
 
 	connectToRemoteNode(remoteNode->ip, remoteNode->port);
-	//cout << "Changed the successor of remote node to myself" << endl;
+	cout << "Changed the successor of remote node to myself" << endl; //TO-DO : comment
 }
 
 void changePredOfRemoteNodeToMyself(nodeHelper* remoteNode) {
@@ -1129,7 +1138,7 @@ void changePredOfRemoteNodeToMyself(nodeHelper* remoteNode) {
 	strcat(client_send_data, selfNode->self->ipWithPort);
 
 	connectToRemoteNode(remoteNode->ip, remoteNode->port);
-	//cout << "Changed the predecessor of remote node to myself" << endl;
+	cout << "Changed the predecessor of remote node to myself" << endl; //TO-DO : comment
 }
 
 nodeHelper* find_successor(char key[]) {
