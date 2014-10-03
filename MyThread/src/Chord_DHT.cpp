@@ -1074,7 +1074,6 @@ void fingersClient() {
 }
 
 void distributeClient() {
-	sleep(5);
 	int sock, bytes_recieved;
 
 	if (!connectToServer(sock)) {
@@ -1158,6 +1157,7 @@ void distributeKeys(nodeHelper* myPred) {
 			cout << "key-val pair " << dataVal << " transferring to pred"
 					<< endl;
 			selfNode->dataValMap.erase(it->first);//last line
+			sleep(5);
 		}
 	}
 }
