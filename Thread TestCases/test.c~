@@ -1,0 +1,44 @@
+#include "MyThread.h"
+
+int fid,gid,hid,ret;
+void *arg;
+
+
+void f();
+void g();
+void h();
+char msg = 'F';
+int main()
+{
+  int i=0;
+  create(f);
+  create(g);
+  create(h);
+  start();
+  printf("All children created\n");
+  while(1) {
+	
+  }
+}
+
+
+
+void f()
+{
+  int i=0;
+    printf("tid :%d in f: %d\n",getID(),i++);
+    usleep(90000);
+}
+
+void g()
+{
+  int i=0;
+  printf("tid :%d in g: %d\n",getID(),i++);
+  usleep(90000);
+}
+
+void h()
+{
+  int i=0;
+  printf("tid :%d in h: %d\n",getID(),i++);
+}

@@ -233,6 +233,9 @@ void helperHelp() {
 }
 
 void helperSelf() {
+if (!checkIfPartOfNw(selfNode)) {
+		return;
+	}
 	cout << "I am " << selfNode->self->ipWithPort << endl;
 }
 

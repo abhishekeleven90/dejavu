@@ -1,0 +1,30 @@
+//Include group's library files inside threadlib.h and run make clean && make
+
+//Manual specifies delete() function to delete thread. This conflicts with delete keyword of c++.
+delete() must be replaced with delete_thread(): Use the following command
+grep -l 'delete(' <group's-thread-library-files> | xargs sed -i s/delete\(/delete_thread\(/g
+
+
+Test1  - 1  //Create threads (non-terminating threads)
+Test2  - 2  //Create threads (terminating threads)
+Test3  - 1  //Thread creating thread
+Test4  - 3  //Stress testcase [10000] threads with stack to test if library data strutures are dynamically sized
+Test5  - 1  //Test thread stack 
+Test6  - 1  //Test clean() - stops scheduler and prints stats for each thread [After g=10 threads to be stopped]
+Test7  - 1  //Test sleep() - Thread g must sleep for 10 seconds
+Test8  - 1  //Test suspend(), resume() : Thread f suspends h whereas g resumes h
+Test9  - 1  //Test yield() - h yields and when scheduled back never yields again
+Test10 - 1  //Test delete() - h deletes f
+Test11 - 1  //Test threads with args...Not sure if it will compile
+Test12 - 1  //BONUS - Test join()
+Test13 - 1  //Tests GetThreadResult()
+
+
+
+Test14 - 3  
+//OUTPUT:999 - Multi-threaded diameter of tree. Each thread does a bfs from a node (1000 Node graph - input from (built into code) inp14) 
+//Default version assumes threadIDs of created threads start from 0 or 1. If not uncomment second line (see source)
+
+Test15 - 4
+//OUTPUT:999 - Same as above but with dfs (on 1000 node graph) - multithreaded
+//Default version assumes threadIDs of created threads start from 0 or 1. If not uncomment second line (see source)

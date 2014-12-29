@@ -47,7 +47,7 @@ address_t translate_address(address_t addr)
 
 //----------Constants---------
 #define TQ 1 //Time Quantum for round-robin scheduling
-#define STACK_SIZE 40000
+#define STACK_SIZE 80000
 #define N 50 //Number of max threads allowed
 //----------Globals---------
 enum State {
@@ -95,7 +95,7 @@ Thread_node* runningThread;
 //***************************FUNCTION DECLARATIONS*********************************
 //----------Helper Functions---------
 void enque(list<Thread_node*> *l, Thread_node* node);
-Thread_node* deque(list<Thread_node*> *l);
+Thread_node* deque1(list<Thread_node*> *l);
 void initializeThread(Thread_node* t_node);
 void switchThreads();
 void checkIfSleepDone(Thread_node* t_node);
@@ -140,7 +140,7 @@ void enque(list<Thread_node*> *l, Thread_node* node) {
 	(*l).push_back(node);
 }
 
-Thread_node* deque(list<Thread_node*> *l) {
+Thread_node* deque1(list<Thread_node*> *l) {
 	Thread_node* node = (*l).front();
 	(*l).pop_front();
 	return node;
@@ -184,7 +184,7 @@ void switchThreads() {
 
 	//Moving readyHead to running state
 	if (!readyQueue.empty()) {
-		runningThread = deque(&readyQueue);
+		runningThread = deque1(&readyQueue);
 		//checkIfSleepDone(runningThread);
 		changeState(runningThread, RUNNING);
 		int runningThreadId = runningThread->stats->threadID;
@@ -353,7 +353,7 @@ Timers* getTimers(int threadID) {
 
 void resumeWaitingThreads(Thread_node *t_node) {
 	while (!(t_node->threadsWaitingForMe).empty()) {
-		Thread_node* waitingThread = deque(&(t_node->threadsWaitingForMe));
+		Thread_node* waitingThread = deque1(&(t_node->threadsWaitingForMe));
 		if (waitingThread->stats->state == WAITING) {
 			//Using "if" check considering the scenario if waiting thread is deleted already
 			moveThread(waitingThread, WAITING, READY);
@@ -437,7 +437,7 @@ void moveThread(Thread_node *t_node, State fromState, State toState) {
 
 void emptyQueue(list<Thread_node*> *queue) {
 	while (!(*queue).empty()) {
-		deque(queue);
+		deque1(queue);
 	}
 }
 
@@ -788,7 +788,7 @@ void clean() {
 	while (!masterList.empty()) {
 		Thread_node* t_node = masterList.front();
 		printStats(t_node);
-		free(deque(&masterList));
+		free(deque1(&masterList));
 	}
 	exit(0);
 }
