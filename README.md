@@ -27,6 +27,6 @@ The operations supported are:
 <b>Build & run the code</b>
 
 To build the code run 'make' from inside this directory.
-You will need to have sudo permissions as our code reqiuires libssl-dev to be installed on your system.
+You will need to have sudo permissions as our code requires libssl-dev to be installed on your system.
 
 To run, after compiling the code, run './chord.o' from within the terminal.
